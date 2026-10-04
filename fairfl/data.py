@@ -141,6 +141,55 @@ def build_loho_splits(norm, holdout):
     return train, (norm_x(ho_X, ho_stats), ho_y, ho_sex)
 
 
+def build_sites(norm="federated-impute", val_frac=0.25, split_seed=0):
+    """Per-hospital (X, y, sex) tensors for fit / val / test, for tuned methods.
+
+    Each hospital's FLamby train split is divided into a fit part and a
+    validation part (stratified on y when both classes have >= 2 patients;
+    Switzerland is all-positive, so it is split unstratified). Normalization
+    and imputation statistics are fit on the fit parts only, so neither the
+    validation nor the test data influence preprocessing.
+
+    Returns {"fit": [...], "val": [...], "test": [...]}, each a list of
+    (X, y, sex) per hospital in CENTER_NAMES order.
+    """
+    from sklearn.model_selection import train_test_split
+
+    assert norm in NORM_MODES, norm
+    fit_raw, val_raw = [], []
+    for c in range(NUM_CLIENTS):
+        X, y = load_raw(c, True)
+        counts = torch.bincount(y.long(), minlength=2)
+        strat = y.numpy() if (counts >= 2).all() else None
+        i_fit, i_val = train_test_split(range(len(y)), test_size=val_frac,
+                                        random_state=split_seed, stratify=strat)
+        fit_raw.append((X[i_fit], y[i_fit]))
+        val_raw.append((X[i_val], y[i_val]))
+    test_raw = [load_raw(c, False) for c in range(NUM_CLIENTS)]
+
+    def sex_of(parts):
+        return [X[:, SEX_IDX].long() for X, _ in parts]
+
+    sexes = {"fit": sex_of(fit_raw), "val": sex_of(val_raw), "test": sex_of(test_raw)}
+    parts = {"fit": fit_raw, "val": val_raw, "test": test_raw}
+
+    if norm == "federated-impute":
+        means = federated_impute_means(fit_raw)
+        parts = {k: [(impute(X, means), y) for X, y in v] for k, v in parts.items()}
+
+    if norm == "local":
+        stats = [(X.mean(0), X.std(0)) for X, _ in parts["fit"]]
+    else:
+        g = aggregate_mean_std([sufficient_stats(X) for X, _ in parts["fit"]])
+        stats = [g] * NUM_CLIENTS
+
+    return {
+        k: [((X - stats[c][0]) / (stats[c][1] + EPS), y, sexes[k][c])
+            for c, (X, y) in enumerate(v)]
+        for k, v in parts.items()
+    }
+
+
 def train_loaders(train_datasets, batch_size=BATCH_SIZE):
     """Per-hospital shuffled train loaders (the FL clients)."""
     return [DataLoader(ds, batch_size=batch_size, shuffle=True) for ds in train_datasets]

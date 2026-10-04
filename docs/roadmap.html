@@ -154,14 +154,14 @@ footer { font-size: 0.82rem; color: var(--muted); border-top: 1px solid var(--li
   <section aria-labelledby="progress-h">
     <h2 id="progress-h">Progress</h2>
     <div class="progress">
-      <div class="bar" role="img" aria-label="6 of 11 milestones done, 1 up next, 4 planned">
-        <span style="width:54.5%;background:var(--done)"></span>
+      <div class="bar" role="img" aria-label="7 of 11 milestones done, 1 up next, 3 planned">
+        <span style="width:63.6%;background:var(--done)"></span>
         <span style="width:9.1%;background:var(--active)"></span>
       </div>
       <div class="legend">
-        <span><i style="background:var(--done)"></i>6 done</span>
+        <span><i style="background:var(--done)"></i>7 done</span>
         <span><i style="background:var(--active)"></i>1 up next</span>
-        <span><i style="background:var(--planned-soft);border:1px solid var(--line)"></i>4 planned</span>
+        <span><i style="background:var(--planned-soft);border:1px solid var(--line)"></i>3 planned</span>
       </div>
     </div>
   </section>
@@ -249,19 +249,24 @@ footer { font-size: 0.82rem; color: var(--muted); border-top: 1px solid var(--li
         </div>
       </li>
 
-      <li class="ms active">
+      <li class="ms done">
         <div class="rail"><span class="node">7</span></div>
         <div class="body">
-          <div class="head"><h3>Port FairTrade to FLamby</h3><span class="status">Up next</span><span class="when">Weeks 2–3</span></div>
-          <p>Rebuild FairTrade as clean, tested code on the real hospital loaders: each hospital trains with a fairness penalty, and Bayesian optimization searches for the best accuracy–fairness trade-offs. Use size-weighted averaging and tune on a validation split, never the test set.</p>
+          <div class="head"><h3>Port FairTrade to FLamby</h3><span class="status">Done</span><span class="when">Week 1</span></div>
+          <p>Rebuilt FairTrade as clean, tested code on the real hospital loaders: each hospital trains with a fairness penalty, and Bayesian optimization searches for the best accuracy–fairness trade-offs. It uses size-weighted averaging and tunes on a validation split, never the test set. The port fixes six defects in the challenge code, including test-set tuning and a reference point that made the "Bayesian" search random.</p>
+          <div class="outcome">
+            <span>FairTrade removes the sex gap in prediction rates (SPD −0.34 → +0.02) at a cost of 7 balanced-accuracy points, and nearly triples the Pareto-front hypervolume (0.047 → 0.133), in all 10 seeds.</span>
+            <span>Key finding: women's disease rate is 25%, men's 60%. Forcing equal prediction rates over-diagnoses women, so sick women are now detected more often than sick men (EOD +0.14). For diagnosis, equal opportunity is the right fairness target, not demographic parity.</span>
+          </div>
+          <div class="files"><code>fairfl/fairtrade.py</code><code>scripts/run_fairtrade.py</code><code>tests/test_fairtrade.py</code></div>
         </div>
       </li>
 
-      <li class="ms planned">
+      <li class="ms active">
         <div class="rail"><span class="node">8</span></div>
         <div class="body">
-          <div class="head"><h3>Our fix: fairness from pooled group totals</h3><span class="status">Planned</span><span class="when">Weeks 3–4</span></div>
-          <p>FairTrade measures fairness separately at each hospital, which breaks where a hospital has almost no women. Instead, hospitals share only small group totals (counts of predictions per group), so fairness is measured across all hospitals together, still privately.</p>
+          <div class="head"><h3>Our fix: equal opportunity from pooled group totals</h3><span class="status">Up next</span><span class="when">Weeks 2–3</span></div>
+          <p>Two changes to FairTrade. First, optimize equal opportunity (equal detection rate for sick women and men), which fits a diagnosis task where disease rates differ by sex. Second, compute the fairness penalty from group totals pooled across hospitals instead of each hospital alone. After the validation split, Long Beach has 1 woman and Switzerland 2 in their training data, so their local penalties carry almost no information. Hospitals share only small per-group sums, so it stays private.</p>
         </div>
       </li>
 
@@ -357,40 +362,47 @@ footer { font-size: 0.82rem; color: var(--muted); border-top: 1px solid var(--li
     <div class="chart">
       <span class="eyebrow">The trade-off: accuracy vs fairness</span>
       <div class="chart-scroll">
-        <!-- x: SPD -0.35 -> 0 maps to 60 -> 600; y: acc 0.68 -> 0.81 maps to 250 -> 20 -->
-        <svg viewBox="0 0 640 290" role="img" aria-label="Accuracy versus SPD: Pooled 0.796 and -0.322; FedAvg federated 0.767 and -0.266; FedAvg federated plus impute 0.765 and -0.242; Local Cleveland 0.735 and -0.199; FedAvg local 0.704 and -0.160; Local Hungary 0.691 and -0.227">
+        <!-- x: SPD -0.40 -> +0.05 maps to 60 -> 600; y: acc 0.68 -> 0.81 maps to 250 -> 20 -->
+        <svg viewBox="0 0 640 290" role="img" aria-label="Accuracy versus SPD. Pooled 0.796 and -0.322; FedAvg tuned 0.787 and -0.342; FedAvg with federated normalization 0.765 and -0.242; Cleveland alone 0.735 and -0.199; FedAvg FLamby default 0.704 and -0.160; Hungary alone 0.691 and -0.227; FairTrade 0.718 and +0.022">
           <line class="grid" x1="60" y1="214.6" x2="600" y2="214.6"/>
           <line class="grid" x1="60" y1="126.2" x2="600" y2="126.2"/>
           <line class="grid" x1="60" y1="37.7" x2="600" y2="37.7"/>
-          <line class="grid" x1="137.1" y1="20" x2="137.1" y2="250"/>
-          <line class="grid" x1="291.4" y1="20" x2="291.4" y2="250"/>
-          <line class="grid" x1="445.7" y1="20" x2="445.7" y2="250"/>
-          <line class="ref" x1="600" y1="20" x2="600" y2="250"/>
+          <line class="grid" x1="60.0" y1="20" x2="60.0" y2="250"/>
+          <text x="60.0" y="268" text-anchor="middle">−0.40</text>
+          <line class="grid" x1="180.0" y1="20" x2="180.0" y2="250"/>
+          <text x="180.0" y="268" text-anchor="middle">−0.30</text>
+          <line class="grid" x1="300.0" y1="20" x2="300.0" y2="250"/>
+          <text x="300.0" y="268" text-anchor="middle">−0.20</text>
+          <line class="grid" x1="420.0" y1="20" x2="420.0" y2="250"/>
+          <text x="420.0" y="268" text-anchor="middle">−0.10</text>
+          <line class="ref" x1="540.0" y1="20" x2="540.0" y2="250"/>
+          <text x="540.0" y="268" text-anchor="middle">0 (fair)</text>
           <text x="52" y="218.6" text-anchor="end">0.70</text>
           <text x="52" y="130.2" text-anchor="end">0.75</text>
           <text x="52" y="41.7" text-anchor="end">0.80</text>
-          <text x="137.1" y="268" text-anchor="middle">−0.30</text>
-          <text x="291.4" y="268" text-anchor="middle">−0.20</text>
-          <text x="445.7" y="268" text-anchor="middle">−0.10</text>
-          <text x="600" y="268" text-anchor="middle">0 (fair)</text>
           <text x="330" y="286" text-anchor="middle">SPD (women − men) →  fairer</text>
           <text x="14" y="135" text-anchor="middle" transform="rotate(-90 14 135)">accuracy</text>
-          <polyline points="353.1,207.5 226.6,99.6 103.2,44.8" fill="none" stroke="var(--line)" stroke-width="2"/>
-          <circle class="worse" cx="103.2" cy="44.8" r="6"/>
-          <text class="lbl" x="113" y="40">Pooled (no privacy)</text>
-          <circle class="pt" cx="189.6" cy="96.1" r="5"/>
-          <text x="180" y="84" text-anchor="end">FedAvg fed.</text>
-          <circle class="pt" cx="226.6" cy="99.6" r="6"/>
-          <text class="lbl" x="237" y="104">FedAvg + fed. norm</text>
-          <circle class="pt" cx="353.1" cy="207.5" r="6"/>
-          <text class="lbl" x="363" y="211">FedAvg, local norm</text>
-          <circle cx="293" cy="152.7" r="5" fill="var(--planned)"/>
-          <text x="303" y="156.7">Cleveland alone</text>
-          <circle cx="249.8" cy="230.5" r="5" fill="var(--planned)"/>
-          <text x="259.8" y="234.5">Hungary alone</text>
+          <polyline points="348.0,207.5 249.6,99.6 153.6,44.8" fill="none" stroke="var(--line)" stroke-width="2"/>
+          <line x1="129.6" y1="60.7" x2="558.4" y2="177.8" stroke="var(--done)" stroke-width="1.5" stroke-dasharray="4 4"/>
+          <circle class="worse" cx="153.6" cy="44.8" r="6"/>
+          <text class="lbl" x="163.6" y="40.8">Pooled (no privacy)</text>
+          <circle class="worse" cx="129.6" cy="60.7" r="5"/>
+          <text x="139.6" y="74.7">FedAvg, tuned lr</text>
+          <circle class="pt" cx="249.6" cy="99.6" r="6"/>
+          <text class="lbl" x="259.6" y="103.6">FedAvg + fed. norm</text>
+          <circle class="pt" cx="348.0" cy="207.5" r="6"/>
+          <text class="lbl" x="358.0" y="211.5">FedAvg, FLamby default</text>
+          <circle cx="301.2" cy="152.7" r="5" fill="var(--planned)"/>
+          <text x="311.2" y="156.7">Cleveland alone</text>
+          <circle cx="267.6" cy="230.5" r="5" fill="var(--planned)"/>
+          <text x="277.6" y="234.5">Hungary alone</text>
+          <line x1="531.6" y1="182.8" x2="600" y2="182.8" stroke="var(--done)" stroke-width="2"/>
+          <line x1="566.4" y1="244.7" x2="566.4" y2="120.8" stroke="var(--done)" stroke-width="2"/>
+          <circle cx="566.4" cy="182.8" r="7" fill="var(--done)"/>
+          <text class="lbl" x="596" y="112" text-anchor="end">FairTrade (val |SPD| ≤ 0.10)</text>
         </svg>
       </div>
-      <p class="note">Up and to the left means more accurate but less fair. Every gain in accuracy so far has cost fairness. Milestones 7–9 aim to move toward the top right. All points: all-centers test set, mean of 10 seeds.</p>
+      <p class="note">Up and to the left means more accurate but less fair. FairTrade (green, with 95% CI whiskers) is the first method to reach SPD ≈ 0, at a cost of about 7 accuracy points. The tuned FedAvg and FairTrade points use the 75% fit split and tuning on validation; the others use the full training data. All points: all-centers test set, mean of 10 seeds.</p>
     </div>
 
     <div class="table-wrap">

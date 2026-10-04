@@ -9,3 +9,6 @@ pandas==2.2.3
 scikit-learn==1.6.1
 scipy==1.14.1
 wget==3.2
+botorch==0.18.1
+gpytorch==1.15.2
+pytest==8.3.3

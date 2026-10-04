@@ -182,6 +182,73 @@ All-centers test set (n = 254, 56 women), 10 seeds:
 3. **Local models from small hospitals are useless elsewhere.** Switzerland's
    model is at chance (0.497), since its training labels are all positive.
 
+## 2026-10-04 · FairTrade vs FedAvg (`scripts/run_fairtrade.py`, seeds 42–51)
+
+Port of FairTrade (`fairfl/fairtrade.py`). Every client minimizes
+BCE + α · demographic-parity penalty, with full-batch local Adam, 30 rounds ×
+10 local steps, and size-weighted FedAvg. MOBO over (α, lr) uses 8 Sobol +
+16 qLogNEHVI evaluations to maximize validation balanced accuracy and
+−|SPD|. Per seed: a fresh 25% validation split of each hospital's train data,
+with federated-impute statistics fit on the remaining 75%. FedAvg is the same
+trainer with α = 0 and lr tuned on validation. **All selection uses validation
+metrics; test metrics are only reported.** `tests/test_fairtrade.py` checks
+that the ported penalty equals the original `DemographicParityLoss`
+numerically.
+
+Defects in the challenge implementation that the port fixes:
+1. MOBO objectives were computed on the **test set**.
+2. The hypervolume reference point [0.001, 0.001] lay above every attainable
+   −|SPD| ≤ 0, so every hypervolume improvement was 0 and the "BO" was
+   effectively random search.
+3. Each candidate evaluation also ran an FL round on the shared global
+   model, so the final model mixed hyperparameters across evaluations.
+4. Double sigmoid: the model ends in `Sigmoid` but feeds `BCEWithLogitsLoss`,
+   and the penalty applies sigmoid again.
+5. Unweighted client averaging.
+6. `AverageTreatmentEffectLoss` calls `super(EqualOpportunityLoss, ...)`, a class
+   that doesn't exist, so `--fairness_notion ate` crashes.
+
+All-centers test set (n = 254, 56 women), 10 seeds, mean ± 95% CI:
+
+| method | balanced acc | SPD (F−M) | EOD (F−M) | test hypervolume |
+|---|---|---|---|---|
+| FedAvg (same trainer, α = 0) | 0.787 ± 0.016 | −0.342 ± 0.057 | −0.191 ± 0.085 | 0.047 ± 0.013 |
+| FairTrade, most accurate with val \|SPD\| ≤ 0.10 | 0.718 ± 0.035 | +0.022 ± 0.029 | **+0.138 ± 0.024** | 0.133 ± 0.004 |
+| FairTrade, most accurate with val \|SPD\| ≤ 0.05 | 0.700 ± 0.060 | +0.014 ± 0.038 | +0.089 ± 0.055 | |
+
+Paired FairTrade(τ = 0.10) − FedAvg: Δ balanced acc −0.069 ± 0.041, Δ|SPD|
+−0.307 ± 0.061. The constraint was met on validation in 10/10 seeds
+(7/10 for τ = 0.05). Hypervolume is the area of the (balanced acc, −|SPD|)
+plane dominated by the validation-selected Pareto front re-scored on test,
+with reference point (0.5, −0.5).
+
+**Findings**
+1. **FairTrade works on real hospitals.** It removes the sex gap in prediction
+   rates (SPD −0.34 → +0.02, CI includes 0) at a cost of 7 balanced-accuracy
+   points, and its Pareto front nearly triples the hypervolume
+   (0.047 → 0.133, 10/10 seeds).
+2. **Demographic parity is the wrong fairness target for this diagnosis.**
+   Women's disease rate in the data is 24.7%, men's is 60.1%. Equalizing
+   prediction rates forces over-diagnosis of women, so sick women are
+   detected *more* often than sick men: EOD +0.14, CI excludes 0. Part of
+   the 7-point accuracy cost is the price of matching rates that really
+   differ. The clinically meaningful notion is equal opportunity (equal
+   detection rate for sick patients), the notion the original code tried to
+   offer but crashed on.
+3. **Selection on a small validation set is noisy.** It has about 123
+   patients and about 23 women per seed; candidate-level val→test
+   correlation is 0.89 for balanced accuracy but only 0.69 for SPD. 2/10
+   seeds picked α at the upper bound with poor accuracy (0.62–0.69).
+4. **FedAvg through this trainer beats FLamby's FedAvg** (0.787 vs 0.764
+   balanced accuracy under the same normalization). Full-batch Adam with a
+   tuned learning rate optimizes better than SGD at lr 1e-3 for 15 rounds.
+   Comparisons below always use the same trainer for both methods.
+
+**Next (milestone 8):** an equal-opportunity objective and penalty, and
+fairness statistics pooled across hospitals. After the validation split,
+Long Beach has 1 woman and Switzerland 2 in their fit data, so their local
+penalties carry almost no information.
+
 ## Raw runs
 
 Per-seed rows: `results/fedavg_heart_<norm>.csv`, `results/loho_heart.csv`,

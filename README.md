@@ -6,8 +6,10 @@ starting with **Fed-Heart-Disease**. FedAvg is compared against
 [FairTrade](https://github.com/JordanManoj/HiWi-FairTrade-Challenge)-style
 Pareto-optimal fair FL.
 
-Status: **Week 1.** FedAvg reproduces FLamby's published accuracy (0.748 ± 0.027)
-and now reports sex-fairness metrics. See [results/LOG.md](results/LOG.md).
+Status: baselines reproduced exactly against FLamby's published results;
+FairTrade ported and evaluated (removes the sex gap in prediction rates at a
+cost of 7 balanced-accuracy points). See [results/LOG.md](results/LOG.md) and
+[docs/roadmap.html](docs/roadmap.html).
 
 ## Setup
 
@@ -58,12 +60,15 @@ python scripts/run_fedavg.py                          # FedAvg, local norm, seed
 python scripts/run_fedavg.py --norm federated-impute  # federated normalization
 python scripts/run_loho.py                            # leave-one-hospital-out, ~15 min
 python scripts/run_baselines.py                       # local + pooled baselines
+python scripts/run_fairtrade.py                       # FairTrade vs FedAvg, ~10 min
+python -m pytest tests                                # unit tests
 ```
 
 ## Layout
 
 ```
-fairfl/      reusable code: data loaders with sex labels, fairness metrics, CIs
+fairfl/      reusable code: data loaders with sex labels, fairness metrics, CIs, FairTrade
+tests/       unit tests (incl. equivalence with the original FairTrade penalty)
 scripts/     setup and experiment entry points
 results/     LOG.md, the run log (mean ± 95% CI over ≥5 seeds), per-seed CSVs
 docs/        roadmap.html, the project roadmap
