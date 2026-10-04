@@ -1,0 +1,11 @@
+# Pinned for reproducibility. FLamby itself is installed editable from
+# external/FLamby at commit edacf54 (see scripts/setup.sh).
+# Install torch from the CPU index first:
+#   pip install torch==2.14.1 --index-url https://download.pytorch.org/whl/cpu
+torch==2.14.1
+# FLamby's heart loader uses np.NaN (removed in numpy 2) -> stay on numpy 1.x
+numpy==1.26.4
+pandas==2.2.3
+scikit-learn==1.6.1
+scipy==1.14.1
+wget==3.2

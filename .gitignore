@@ -1,0 +1,17 @@
+# third-party clones (re-created by scripts/setup.sh)
+external/
+
+# data is downloaded, never committed (CC BY 4.0, owned by UCI / original authors)
+data/
+
+# environments
+.venv/
+venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# run artifacts (results/LOG.md and summary tables ARE committed)
+runs/
+*.pt
+*.log

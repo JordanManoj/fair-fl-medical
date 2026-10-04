@@ -1,0 +1,440 @@
+<title>Fair FL Hospital Roadmap</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a single reading column; a vertical milestone track with status nodes, results as a scaled interval chart */
+:root {
+  --bg: #f6f8fa;
+  --surface: #ffffff;
+  --ink: #142230;
+  --muted: #5a6b7b;
+  --line: #d8e0e7;
+  --accent: #1d5c86;
+  --accent-soft: #e3eef6;
+  --done: #2f7d55;
+  --done-soft: #e2f2e9;
+  --active: #b26b00;
+  --active-soft: #fbefd9;
+  --planned: #7d8a96;
+  --planned-soft: #eef1f4;
+  --warn: #a3392f;
+  --font-display: "Instrument Serif", "Iowan Old Style", Georgia, serif;
+  --font-body: "Public Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f161d; --surface: #16202a; --ink: #e4ebf1; --muted: #9aabba; --line: #2a3846;
+    --accent: #7db8e0; --accent-soft: #1b2e3d; --done: #6cc495; --done-soft: #17301f;
+    --active: #e7a54a; --active-soft: #3a2a12; --planned: #8c9aa7; --planned-soft: #1f2a35;
+    --warn: #e88579; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f161d; --surface: #16202a; --ink: #e4ebf1; --muted: #9aabba; --line: #2a3846;
+  --accent: #7db8e0; --accent-soft: #1b2e3d; --done: #6cc495; --done-soft: #17301f;
+  --active: #e7a54a; --active-soft: #3a2a12; --planned: #8c9aa7; --planned-soft: #1f2a35;
+  --warn: #e88579; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.6; }
+.wrap { max-width: 860px; margin: 0 auto; padding-inline: 20px; padding-block: 48px 72px; display: grid; gap: 56px; }
+h1, h2 { font-family: var(--font-display); font-weight: 400; text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
+h1 { font-size: clamp(2.3rem, 6vw, 3.4rem); line-height: 1.05; }
+h1 em { color: var(--accent); }
+h2 { font-size: 1.9rem; line-height: 1.15; }
+h3 { font-size: 1rem; font-weight: 600; margin: 0; }
+p { margin: 0; max-width: 66ch; }
+.eyebrow { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.mono { font-family: var(--font-mono); font-size: 0.85em; }
+a { color: var(--accent); }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+header { display: grid; gap: 18px; }
+.lede { font-size: 1.08rem; color: var(--muted); }
+.meta { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font-family: var(--font-mono); font-size: 0.75rem; padding: 4px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+
+section { display: grid; gap: 20px; }
+.question { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 22px 24px; display: grid; gap: 12px; }
+.question blockquote { margin: 0; font-family: var(--font-display); font-size: 1.45rem; line-height: 1.3; font-style: italic; }
+
+/* progress */
+.progress { display: grid; gap: 8px; }
+.bar { display: flex; height: 10px; border-radius: 999px; overflow: hidden; background: var(--planned-soft); }
+.bar span { display: block; height: 100%; }
+.legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 0.82rem; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+
+/* track */
+.track { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.ms { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 16px; }
+.rail { position: relative; display: flex; justify-content: center; }
+.rail::after { content: ""; position: absolute; top: 34px; bottom: 0; width: 2px; background: var(--line); }
+.ms:last-child .rail::after { display: none; }
+.node { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-family: var(--font-mono); font-size: 0.78rem; font-weight: 500; border: 2px solid; z-index: 1; background: var(--bg); }
+.done .node { border-color: var(--done); color: var(--done); background: var(--done-soft); }
+.active .node { border-color: var(--active); color: var(--active); background: var(--active-soft); }
+.planned .node { border-color: var(--line); color: var(--planned); }
+.body { padding-bottom: 30px; display: grid; gap: 8px; min-width: 0; }
+.head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 12px; }
+.status { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 8px; border-radius: 4px; }
+.done .status { color: var(--done); background: var(--done-soft); }
+.active .status { color: var(--active); background: var(--active-soft); }
+.planned .status { color: var(--planned); background: var(--planned-soft); }
+.when { font-family: var(--font-mono); font-size: 0.75rem; color: var(--muted); }
+.body p { color: var(--muted); }
+.outcome { border-left: 2px solid var(--line); padding-left: 12px; color: var(--ink); font-size: 0.93rem; display: grid; gap: 4px; }
+.done .outcome { border-left-color: var(--done); }
+.active .outcome { border-left-color: var(--active); }
+.files { display: flex; flex-wrap: wrap; gap: 6px; }
+.files code { font-family: var(--font-mono); font-size: 0.74rem; background: var(--planned-soft); color: var(--muted); padding: 2px 7px; border-radius: 4px; }
+.phase-label { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); padding: 6px 0 18px 60px; }
+
+/* chart */
+.chart { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px 20px 14px; display: grid; gap: 14px; min-width: 0; }
+.chart-scroll { overflow-x: auto; }
+.chart svg { display: block; width: 100%; min-width: 520px; height: auto; }
+.chart svg text { fill: var(--muted); font-family: var(--font-mono); font-size: 11px; }
+.chart svg .lbl { fill: var(--ink); font-family: var(--font-body); font-size: 12.5px; }
+.chart svg .grid { stroke: var(--line); stroke-width: 1; }
+.chart svg .ci { stroke: var(--accent); stroke-width: 2; }
+.chart svg .pt { fill: var(--accent); }
+.chart svg .ref { stroke: var(--muted); stroke-dasharray: 3 4; stroke-width: 1.2; }
+.chart svg .worse { fill: var(--warn); }
+.chart svg .ci.worse-line { stroke: var(--warn); }
+.note { font-size: 0.82rem; color: var(--muted); }
+
+/* tables */
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 0.88rem; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 9px 14px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+tr:last-child td { border-bottom: 0; }
+td.flag { color: var(--warn); font-weight: 600; }
+
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.rule { display: grid; gap: 4px; }
+.rule h3 { font-size: 0.95rem; }
+.rule p { font-size: 0.9rem; color: var(--muted); }
+footer { font-size: 0.82rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 18px; display: grid; gap: 6px; }
+@media (prefers-reduced-motion: no-preference) {
+  .active .node { animation: pulse 2.4s ease-in-out infinite; }
+  @keyframes pulse { 50% { box-shadow: 0 0 0 6px var(--active-soft); } }
+}
+@media (max-width: 520px) {
+  .ms { grid-template-columns: 36px minmax(0, 1fr); gap: 12px; }
+  .node { width: 30px; height: 30px; }
+  .phase-label { padding-left: 48px; }
+}
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">Research roadmap · Jordi · MSc Informatik, LUH</span>
+    <h1>Fair federated learning on <em>real hospital data</em></h1>
+    <p class="lede">Four hospitals train one heart-disease model without sharing patient records. We test whether that shared model treats women and men fairly, whether fair-FL methods such as FairTrade (AAAI 2024) still work on messy real data, and how to fix them where they break.</p>
+    <div class="meta">
+      <span class="chip">FLamby · Fed-Heart-Disease</span>
+      <span class="chip">740 patients · 4 hospitals</span>
+      <span class="chip">sensitive attribute: sex</span>
+      <span class="chip">updated 4 Oct 2026</span>
+    </div>
+  </header>
+
+  <section>
+    <div class="question">
+      <span class="eyebrow">The research question</span>
+      <blockquote>Does fair federated learning survive real cross-silo medical data, where some hospitals have almost no patients from the protected group?</blockquote>
+      <p class="note">The goal: a rigorous, reproducible project that extends FairTrade, strong enough to propose as a Master's project or thesis in the L3S Trustworthy AI Lab.</p>
+    </div>
+  </section>
+
+  <section aria-labelledby="progress-h">
+    <h2 id="progress-h">Progress</h2>
+    <div class="progress">
+      <div class="bar" role="img" aria-label="6 of 11 milestones done, 1 up next, 4 planned">
+        <span style="width:54.5%;background:var(--done)"></span>
+        <span style="width:9.1%;background:var(--active)"></span>
+      </div>
+      <div class="legend">
+        <span><i style="background:var(--done)"></i>6 done</span>
+        <span><i style="background:var(--active)"></i>1 up next</span>
+        <span><i style="background:var(--planned-soft);border:1px solid var(--line)"></i>4 planned</span>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="ms-h">
+    <h2 id="ms-h">Milestones</h2>
+    <ol class="track">
+      <li class="phase-label">Phase 1 · Fed-Heart-Disease (CPU)</li>
+
+      <li class="ms done">
+        <div class="rail"><span class="node">1</span></div>
+        <div class="body">
+          <div class="head"><h3>Reproducible setup</h3><span class="status">Done</span><span class="when">Week 1</span></div>
+          <p>Installed FLamby with only the heart dataset, downloaded and verified the four hospital files, and set up a clean repo with pinned versions.</p>
+          <div class="outcome">
+            <span>FLamby pinned to commit <span class="mono">edacf54</span>; one-command rebuild via <span class="mono">scripts/setup.sh</span>.</span>
+            <span>Found that the model sees 13 features, not 16, and that sex is feature index 1.</span>
+          </div>
+          <div class="files"><code>scripts/setup.sh</code><code>requirements.txt</code><code>README.md</code></div>
+        </div>
+      </li>
+
+      <li class="ms done">
+        <div class="rail"><span class="node">2</span></div>
+        <div class="body">
+          <div class="head"><h3>Reproduce the FedAvg baseline</h3><span class="status">Done</span><span class="when">Week 1</span></div>
+          <p>Trained FedAvg with FLamby's own code and settings, then compared every seed against FLamby's published result files.</p>
+          <div class="outcome">
+            <span>Accuracy 0.748 ± 0.027, identical to the published figure. 24 of 25 per-seed, per-hospital numbers match exactly.</span>
+            <span>Finding: FLamby's pooled test uses normalization no FL client has. Evaluated realistically, FedAvg scores 0.705.</span>
+          </div>
+          <div class="files"><code>scripts/run_fedavg.py</code><code>results/LOG.md</code></div>
+        </div>
+      </li>
+
+      <li class="ms done">
+        <div class="rail"><span class="node">3</span></div>
+        <div class="body">
+          <div class="head"><h3>Fairness metrics</h3><span class="status">Done</span><span class="when">Week 1</span></div>
+          <p>Added statistical parity difference (SPD), equal opportunity difference (EOD) and per-hospital balanced accuracy, with 95% confidence intervals over seeds.</p>
+          <div class="outcome">
+            <span>FedAvg predicts heart disease for women less often than for men (SPD −0.16 over 10 seeds).</span>
+            <span>Switzerland's test set has no women, so per-site fairness is undefined there and is reported as n/a, never 0.</span>
+          </div>
+          <div class="files"><code>fairfl/metrics.py</code><code>fairfl/data.py</code></div>
+        </div>
+      </li>
+
+      <li class="ms done">
+        <div class="rail"><span class="node">4</span></div>
+        <div class="body">
+          <div class="head"><h3>Federated normalization experiment</h3><span class="status">Done</span><span class="when">Week 1</span></div>
+          <p>Hospitals share only counts, sums and sums of squares so that everyone scales features the same way. A third variant first imputes the cholesterol values coded as 0, to rule out a missing-data shortcut.</p>
+          <div class="outcome">
+            <span>Accuracy rises from 0.704 to 0.765, in 10 of 10 seeds. The cholesterol shortcut explains almost none of it.</span>
+            <span>The model also becomes less fair to women: SPD worsens in 10 of 10 seeds. A preprocessing choice alone shifts the accuracy–fairness trade-off.</span>
+          </div>
+          <div class="files"><code>run_fedavg.py --norm</code><code>results/fedavg_heart_*.csv</code></div>
+        </div>
+      </li>
+
+      <li class="ms done">
+        <div class="rail"><span class="node">5</span></div>
+        <div class="body">
+          <div class="head"><h3>Leave-one-hospital-out test</h3><span class="status">Done</span><span class="when">Week 1</span></div>
+          <p>Train on three hospitals and test on the fourth, which the model has never seen. If the normalization gain came from the model recognizing hospitals, it should vanish here.</p>
+          <div class="outcome">
+            <span>It doesn't vanish. At unseen hospitals with balanced disease rates (Cleveland, Hungary), balanced accuracy still improves by about 3 points (p ≈ 0.03), half the original gain.</span>
+            <span>At hospitals where most patients are sick, the accuracy jump is the model predicting "disease" more often: at Long Beach, balanced accuracy actually drops by 6 points. From now on, balanced accuracy is a headline metric and imputation is the default.</span>
+          </div>
+          <div class="files"><code>scripts/run_loho.py</code></div>
+        </div>
+      </li>
+
+      <li class="ms done">
+        <div class="rail"><span class="node">6</span></div>
+        <div class="body">
+          <div class="head"><h3>Local and pooled baselines</h3><span class="status">Done</span><span class="when">Week 1</span></div>
+          <p>Completed the baseline set: one model per hospital, and one model trained on all data pooled together, which is the upper bound FL tries to reach. Both got the same fairness metrics.</p>
+          <div class="outcome">
+            <span>All 100 local-model accuracies match FLamby's published files exactly. Pooled training reaches 0.796, the ceiling.</span>
+            <span>The more accurate the model, the less fair it is: SPD goes from −0.16 (FedAvg) to −0.24 (federated normalization) to −0.32 (pooled). Using the data better widens the sex gap, which is why a fairness method is needed.</span>
+          </div>
+          <div class="files"><code>scripts/run_baselines.py</code><code>results/baselines_heart.csv</code></div>
+        </div>
+      </li>
+
+      <li class="ms active">
+        <div class="rail"><span class="node">7</span></div>
+        <div class="body">
+          <div class="head"><h3>Port FairTrade to FLamby</h3><span class="status">Up next</span><span class="when">Weeks 2–3</span></div>
+          <p>Rebuild FairTrade as clean, tested code on the real hospital loaders: each hospital trains with a fairness penalty, and Bayesian optimization searches for the best accuracy–fairness trade-offs. Use size-weighted averaging and tune on a validation split, never the test set.</p>
+        </div>
+      </li>
+
+      <li class="ms planned">
+        <div class="rail"><span class="node">8</span></div>
+        <div class="body">
+          <div class="head"><h3>Our fix: fairness from pooled group totals</h3><span class="status">Planned</span><span class="when">Weeks 3–4</span></div>
+          <p>FairTrade measures fairness separately at each hospital, which breaks where a hospital has almost no women. Instead, hospitals share only small group totals (counts of predictions per group), so fairness is measured across all hospitals together, still privately.</p>
+        </div>
+      </li>
+
+      <li class="ms planned">
+        <div class="rail"><span class="node">9</span></div>
+        <div class="body">
+          <div class="head"><h3>Trade-off curves and comparison</h3><span class="status">Planned</span><span class="when">Weeks 4–5</span></div>
+          <p>The main result: Pareto fronts for FedAvg, FairTrade and our version, with local or federated normalization, over 10+ seeds with confidence intervals.</p>
+        </div>
+      </li>
+
+      <li class="ms planned">
+        <div class="rail"><span class="node">10</span></div>
+        <div class="body">
+          <div class="head"><h3>Package and propose</h3><span class="status">Planned</span><span class="when">Weeks 5–6</span></div>
+          <p>Public GitHub repo, a 4–6 page report with one key figure, and a short email proposing the work as a Master's project or thesis.</p>
+        </div>
+      </li>
+
+      <li class="phase-label">Phase 2 · later</li>
+      <li class="ms planned">
+        <div class="rail"><span class="node">11</span></div>
+        <div class="body">
+          <div class="head"><h3>Scale up the data</h3><span class="status">Planned</span><span class="when">After week 6</span></div>
+          <p>Run the same method on harder data: eICU (200+ real ICUs; access needs PhysioNet credentialing, about 1–2 weeks) or FLamby's imaging sets, Fed-ISIC2019 and Fed-Camelyon16 (GPU).</p>
+        </div>
+      </li>
+    </ol>
+  </section>
+
+  <section aria-labelledby="res-h">
+    <h2 id="res-h">Results so far</h2>
+    <p>FedAvg on all four hospitals' test sets combined (254 patients, 56 women). Points are means over 10 seeds; bars are 95% confidence intervals.</p>
+    <div class="chart">
+      <span class="eyebrow">Accuracy</span>
+      <div class="chart-scroll">
+        <!-- x scale: 0.65 -> 0.82 maps to 190 -> 640 (450px / 0.17) -->
+        <svg viewBox="0 0 660 170" role="img" aria-label="Accuracy: local normalization 0.704, federated 0.767, federated with imputation 0.765; pooled training reference 0.795">
+          <line class="grid" x1="190" y1="10" x2="190" y2="140"/>
+          <line class="grid" x1="322.4" y1="10" x2="322.4" y2="140"/>
+          <line class="grid" x1="454.7" y1="10" x2="454.7" y2="140"/>
+          <line class="grid" x1="587.1" y1="10" x2="587.1" y2="140"/>
+          <text x="190" y="158" text-anchor="middle">0.65</text>
+          <text x="322.4" y="158" text-anchor="middle">0.70</text>
+          <text x="454.7" y="158" text-anchor="middle">0.75</text>
+          <text x="587.1" y="158" text-anchor="middle">0.80</text>
+          <line class="ref" x1="573.8" y1="10" x2="573.8" y2="140"/>
+          <text x="573.8" y="22" text-anchor="end" dx="-6">pooled training 0.795</text>
+          <text class="lbl" x="0" y="54">Local (FLamby default)</text>
+          <line class="ci" x1="306.5" y1="50" x2="359.4" y2="50"/>
+          <circle class="pt" cx="332.9" cy="50" r="5"/>
+          <text x="367.4" y="54">0.704</text>
+          <text class="lbl" x="0" y="89">Federated</text>
+          <line class="ci" x1="465.3" y1="85" x2="534.1" y2="85"/>
+          <circle class="pt" cx="499.7" cy="85" r="5"/>
+          <text x="499.7" y="74" text-anchor="middle">0.767</text>
+          <text class="lbl" x="0" y="124">Federated + impute</text>
+          <line class="ci" x1="457.4" y1="120" x2="531.5" y2="120"/>
+          <circle class="pt" cx="494.4" cy="120" r="5"/>
+          <text x="494.4" y="109" text-anchor="middle">0.765</text>
+        </svg>
+      </div>
+      <span class="eyebrow">Statistical parity difference (women − men; 0 is fair)</span>
+      <div class="chart-scroll">
+        <!-- x scale: -0.40 -> 0.05 maps to 190 -> 640 (450px / 0.45) -->
+        <svg viewBox="0 0 660 150" role="img" aria-label="SPD: local -0.160, federated -0.266, federated with imputation -0.242">
+          <line class="grid" x1="190" y1="10" x2="190" y2="120"/>
+          <line class="grid" x1="290" y1="10" x2="290" y2="120"/>
+          <line class="grid" x1="390" y1="10" x2="390" y2="120"/>
+          <line class="grid" x1="490" y1="10" x2="490" y2="120"/>
+          <line class="ref" x1="590" y1="10" x2="590" y2="120"/>
+          <text x="190" y="138" text-anchor="middle">−0.40</text>
+          <text x="290" y="138" text-anchor="middle">−0.30</text>
+          <text x="390" y="138" text-anchor="middle">−0.20</text>
+          <text x="490" y="138" text-anchor="middle">−0.10</text>
+          <text x="590" y="138" text-anchor="middle">0 (fair)</text>
+          <text class="lbl" x="0" y="34">Local (FLamby default)</text>
+          <line class="ci" x1="334" y1="30" x2="526" y2="30"/>
+          <circle class="pt" cx="430" cy="30" r="5"/>
+          <text x="534" y="34">−0.160</text>
+          <text class="lbl" x="0" y="69">Federated</text>
+          <line class="ci worse-line" x1="247" y1="65" x2="401" y2="65"/>
+          <circle class="worse" cx="324" cy="65" r="5"/>
+          <text x="409" y="69">−0.266</text>
+          <text class="lbl" x="0" y="104">Federated + impute</text>
+          <line class="ci worse-line" x1="270" y1="100" x2="426" y2="100"/>
+          <circle class="worse" cx="348" cy="100" r="5"/>
+          <text x="434" y="104">−0.242</text>
+        </svg>
+      </div>
+      <p class="note">Paired over the same 10 seeds, federated + impute vs local: accuracy +0.060 ± 0.019 (better in 10/10 seeds), SPD −0.082 ± 0.031 (worse in 10/10 seeds).</p>
+    </div>
+    <div class="chart">
+      <span class="eyebrow">The trade-off: accuracy vs fairness</span>
+      <div class="chart-scroll">
+        <!-- x: SPD -0.35 -> 0 maps to 60 -> 600; y: acc 0.68 -> 0.81 maps to 250 -> 20 -->
+        <svg viewBox="0 0 640 290" role="img" aria-label="Accuracy versus SPD: Pooled 0.796 and -0.322; FedAvg federated 0.767 and -0.266; FedAvg federated plus impute 0.765 and -0.242; Local Cleveland 0.735 and -0.199; FedAvg local 0.704 and -0.160; Local Hungary 0.691 and -0.227">
+          <line class="grid" x1="60" y1="214.6" x2="600" y2="214.6"/>
+          <line class="grid" x1="60" y1="126.2" x2="600" y2="126.2"/>
+          <line class="grid" x1="60" y1="37.7" x2="600" y2="37.7"/>
+          <line class="grid" x1="137.1" y1="20" x2="137.1" y2="250"/>
+          <line class="grid" x1="291.4" y1="20" x2="291.4" y2="250"/>
+          <line class="grid" x1="445.7" y1="20" x2="445.7" y2="250"/>
+          <line class="ref" x1="600" y1="20" x2="600" y2="250"/>
+          <text x="52" y="218.6" text-anchor="end">0.70</text>
+          <text x="52" y="130.2" text-anchor="end">0.75</text>
+          <text x="52" y="41.7" text-anchor="end">0.80</text>
+          <text x="137.1" y="268" text-anchor="middle">−0.30</text>
+          <text x="291.4" y="268" text-anchor="middle">−0.20</text>
+          <text x="445.7" y="268" text-anchor="middle">−0.10</text>
+          <text x="600" y="268" text-anchor="middle">0 (fair)</text>
+          <text x="330" y="286" text-anchor="middle">SPD (women − men) →  fairer</text>
+          <text x="14" y="135" text-anchor="middle" transform="rotate(-90 14 135)">accuracy</text>
+          <polyline points="353.1,207.5 226.6,99.6 103.2,44.8" fill="none" stroke="var(--line)" stroke-width="2"/>
+          <circle class="worse" cx="103.2" cy="44.8" r="6"/>
+          <text class="lbl" x="113" y="40">Pooled (no privacy)</text>
+          <circle class="pt" cx="189.6" cy="96.1" r="5"/>
+          <text x="180" y="84" text-anchor="end">FedAvg fed.</text>
+          <circle class="pt" cx="226.6" cy="99.6" r="6"/>
+          <text class="lbl" x="237" y="104">FedAvg + fed. norm</text>
+          <circle class="pt" cx="353.1" cy="207.5" r="6"/>
+          <text class="lbl" x="363" y="211">FedAvg, local norm</text>
+          <circle cx="293" cy="152.7" r="5" fill="var(--planned)"/>
+          <text x="303" y="156.7">Cleveland alone</text>
+          <circle cx="249.8" cy="230.5" r="5" fill="var(--planned)"/>
+          <text x="259.8" y="234.5">Hungary alone</text>
+        </svg>
+      </div>
+      <p class="note">Up and to the left means more accurate but less fair. Every gain in accuracy so far has cost fairness. Milestones 7–9 aim to move toward the top right. All points: all-centers test set, mean of 10 seeds.</p>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Unseen hospital</th><th>Patients</th><th>Accuracy, local → fed.</th><th>Balanced acc., local → fed.</th><th>Verdict</th></tr></thead>
+        <tbody>
+          <tr><td>Cleveland</td><td>303</td><td>0.704 → 0.735</td><td>0.706 → 0.731</td><td>Real gain</td></tr>
+          <tr><td>Hungary</td><td>261</td><td>0.705 → 0.766</td><td>0.725 → 0.754</td><td>Real gain</td></tr>
+          <tr><td>Switzerland</td><td>46</td><td>0.557 → 0.787</td><td>0.773 → 0.842</td><td>Not significant</td></tr>
+          <tr><td>Long Beach</td><td>130</td><td>0.631 → 0.745</td><td class="flag">0.660 → 0.596</td><td class="flag">Prevalence effect</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Leave-one-hospital-out: FedAvg trained on the other three hospitals, federated normalization with imputation, 10 seeds. Balanced accuracy averages performance on sick and healthy patients, so it can't be inflated by predicting "disease" for everyone.</p>
+  </section>
+
+  <section aria-labelledby="data-h">
+    <h2 id="data-h">The hospitals</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Hospital</th><th>Train</th><th>Test</th><th>Women (train / test)</th><th>Disease rate</th><th>Cholesterol missing</th></tr></thead>
+        <tbody>
+          <tr><td>Cleveland</td><td>199</td><td>104</td><td>63 / 34</td><td>46%</td><td>0%</td></tr>
+          <tr><td>Hungary</td><td>172</td><td>89</td><td>50 / 19</td><td>38%</td><td>0%</td></tr>
+          <tr><td>Switzerland</td><td>30</td><td>16</td><td class="flag">3 / 0</td><td class="flag">100%</td><td class="flag">100%</td></tr>
+          <tr><td>Long Beach VA</td><td>85</td><td>45</td><td class="flag">2 / 3</td><td>78%</td><td>~25%</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Highlighted cells are why real data is hard: two hospitals have almost no women, Switzerland's training patients are all positive, and missing cholesterol is recorded as 0. Disease rates are for the training split.</p>
+  </section>
+
+  <section aria-labelledby="rig-h">
+    <h2 id="rig-h">Rigor rules</h2>
+    <div class="two">
+      <div class="rule"><h3>Never a single number</h3><p>Every result uses 5–10+ seeds and reports a mean with a 95% confidence interval. Method comparisons use paired tests on the same seeds.</p></div>
+      <div class="rule"><h3>Preprocessing fit on train only</h3><p>Normalization and imputation statistics come from training data only. No tuning on the test set; FairTrade will be tuned on a validation split.</p></div>
+      <div class="rule"><h3>Undefined means n/a</h3><p>If a group or class is missing from a test set, the metric is reported as n/a, never silently as 0.</p></div>
+      <div class="rule"><h3>Check before claiming</h3><p>Every gain gets a control: the imputation run for the cholesterol shortcut, and leave-one-hospital-out for hospital recognition.</p></div>
+    </div>
+  </section>
+
+  <footer>
+    <span>Data: Janosi, Steinbrunn, Pfisterer &amp; Detrano (1988), Heart Disease, UCI Machine Learning Repository, CC BY 4.0. Benchmark: Ogier du Terrail et al., FLamby, NeurIPS 2022 Datasets &amp; Benchmarks.</span>
+    <span>Builds on FairTrade (AAAI 2024) from the L3S Trustworthy AI Lab.</span>
+  </footer>
+</div>
