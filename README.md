@@ -60,7 +60,8 @@ python scripts/run_fedavg.py                          # FedAvg, local norm, seed
 python scripts/run_fedavg.py --norm federated-impute  # federated normalization
 python scripts/run_loho.py                            # leave-one-hospital-out, ~15 min
 python scripts/run_baselines.py                       # local + pooled baselines
-python scripts/run_fairtrade.py                       # FairTrade vs FedAvg, ~10 min
+python scripts/run_fairtrade.py --notion eo --scope global  # FairTrade variants, ~10 min each
+python scripts/compare_fairtrade.py                    # paired comparison of the 4 variants
 python -m pytest tests                                # unit tests
 ```
 

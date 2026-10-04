@@ -154,14 +154,14 @@ footer { font-size: 0.82rem; color: var(--muted); border-top: 1px solid var(--li
   <section aria-labelledby="progress-h">
     <h2 id="progress-h">Progress</h2>
     <div class="progress">
-      <div class="bar" role="img" aria-label="7 of 11 milestones done, 1 up next, 3 planned">
-        <span style="width:63.6%;background:var(--done)"></span>
+      <div class="bar" role="img" aria-label="8 of 11 milestones done, 1 up next, 2 planned">
+        <span style="width:72.7%;background:var(--done)"></span>
         <span style="width:9.1%;background:var(--active)"></span>
       </div>
       <div class="legend">
-        <span><i style="background:var(--done)"></i>7 done</span>
+        <span><i style="background:var(--done)"></i>8 done</span>
         <span><i style="background:var(--active)"></i>1 up next</span>
-        <span><i style="background:var(--planned-soft);border:1px solid var(--line)"></i>3 planned</span>
+        <span><i style="background:var(--planned-soft);border:1px solid var(--line)"></i>2 planned</span>
       </div>
     </div>
   </section>
@@ -262,19 +262,24 @@ footer { font-size: 0.82rem; color: var(--muted); border-top: 1px solid var(--li
         </div>
       </li>
 
-      <li class="ms active">
+      <li class="ms done">
         <div class="rail"><span class="node">8</span></div>
         <div class="body">
-          <div class="head"><h3>Our fix: equal opportunity from pooled group totals</h3><span class="status">Up next</span><span class="when">Weeks 2–3</span></div>
-          <p>Two changes to FairTrade. First, optimize equal opportunity (equal detection rate for sick women and men), which fits a diagnosis task where disease rates differ by sex. Second, compute the fairness penalty from group totals pooled across hospitals instead of each hospital alone. After the validation split, Long Beach has 1 woman and Switzerland 2 in their training data, so their local penalties carry almost no information. Hospitals share only small per-group sums, so it stays private.</p>
+          <div class="head"><h3>Our fix: equal opportunity and pooled group totals</h3><span class="status">Done</span><span class="when">Week 1</span></div>
+          <p>A 2×2 experiment: two fairness targets (equal prediction rates vs equal detection of sick patients) × two penalty scopes (each hospital alone vs group totals pooled across hospitals). The pooled version shares only 4 numbers per hospital per round. Tests confirm it equals the penalty on all data combined.</p>
+          <div class="outcome">
+            <span>Equal opportunity is the better target: it shrinks the detection gap for sick women (EOD −0.19 → −0.04) without over-diagnosing them, keeps more accuracy (0.761 vs 0.732), and covers significantly more of the trade-off space (p = 0.04).</span>
+            <span>Null result: pooled group totals don't beat FairTrade's per-hospital penalty here. 96% of women in the training data are at Cleveland and Hungary, so their local penalties already carry the fairness signal. The failure mode we target isn't strongly present in this dataset.</span>
+          </div>
+          <div class="files"><code>fairfl/fairtrade.py</code><code>scripts/compare_fairtrade.py</code><code>results/fairtrade_*_&lt;notion&gt;_&lt;scope&gt;.csv</code></div>
         </div>
       </li>
 
-      <li class="ms planned">
+      <li class="ms active">
         <div class="rail"><span class="node">9</span></div>
         <div class="body">
-          <div class="head"><h3>Trade-off curves and comparison</h3><span class="status">Planned</span><span class="when">Weeks 4–5</span></div>
-          <p>The main result: Pareto fronts for FedAvg, FairTrade and our version, with local or federated normalization, over 10+ seeds with confidence intervals.</p>
+          <div class="head"><h3>Stress test: where per-hospital fairness should fail</h3><span class="status">Up next</span><span class="when">Week 2</span></div>
+          <p>Re-split the same patients into many small clients so that women are spread thinly (a standard federated-learning stress test with skewed client composition). Here per-hospital fairness penalties see too few women to work, which is where pooled group totals should help. Compare all four FairTrade variants and FedAvg across levels of skew.</p>
         </div>
       </li>
 
@@ -417,6 +422,19 @@ footer { font-size: 0.82rem; color: var(--muted); border-top: 1px solid var(--li
       </table>
     </div>
     <p class="note">Leave-one-hospital-out: FedAvg trained on the other three hospitals, federated normalization with imputation, 10 seeds. Balanced accuracy averages performance on sick and healthy patients, so it can't be inflated by predicting "disease" for everyone.</p>
+      <div class="table-wrap">
+      <table>
+        <thead><tr><th>FairTrade variant</th><th>Balanced acc.</th><th>SPD (F−M)</th><th>EOD (F−M)</th><th>Hypervolume, EOD space</th></tr></thead>
+        <tbody>
+          <tr><td>FedAvg (no fairness penalty)</td><td>0.787</td><td class="flag">−0.342</td><td class="flag">−0.191</td><td>0.090</td></tr>
+          <tr><td>Demographic parity, per hospital</td><td>0.732</td><td>−0.012</td><td class="flag">+0.114</td><td>0.127</td></tr>
+          <tr><td>Demographic parity, pooled totals</td><td>0.747</td><td>−0.013</td><td class="flag">+0.114</td><td>0.133</td></tr>
+          <tr><td>Equal opportunity, per hospital</td><td>0.761</td><td>−0.208</td><td>−0.042</td><td>0.137</td></tr>
+          <tr><td>Equal opportunity, pooled totals</td><td>0.763</td><td>−0.227</td><td>−0.069</td><td>0.131</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Milestone 8, all-centers test set, mean of 10 seeds; each FairTrade row is the most accurate configuration with a validation fairness gap ≤ 0.10. Demographic parity over-corrects the detection gap (EOD +0.11). Equal opportunity closes it while keeping more accuracy. An SPD of about −0.21 under equal opportunity reflects the real difference in disease rates (25% of women vs 60% of men).</p>
   </section>
 
   <section aria-labelledby="data-h">

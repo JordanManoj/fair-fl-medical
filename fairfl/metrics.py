@@ -38,13 +38,25 @@ def eod(y, yhat, sex):
 
 
 def all_metrics(y, prob, sex, threshold=0.5):
+    """Thresholded metrics, plus soft gaps on the predicted probabilities.
+
+    spd_soft / eod_soft replace yhat by the probability: the gap in mean
+    predicted risk (all patients / sick patients). They are continuous, so
+    on small groups (about 6 sick women per validation split) they vary far
+    less than the thresholded gaps; they are used for model selection.
+    """
     y, sex = np.asarray(y).astype(int), np.asarray(sex).astype(int)
-    yhat = (np.asarray(prob) > threshold).astype(int)
+    prob = np.asarray(prob, dtype=float)
+    yhat = (prob > threshold).astype(int)
+    pos = y == 1
     return {
         "acc": accuracy(y, yhat),
         "bacc": balanced_accuracy(y, yhat),
         "spd": spd(yhat, sex),
         "eod": eod(y, yhat, sex),
+        "spd_soft": _rate(sex == FEMALE, prob) - _rate(sex == MALE, prob),
+        "eod_soft": (_rate(pos & (sex == FEMALE), prob)
+                     - _rate(pos & (sex == MALE), prob)),
         "n": len(y),
         "n_female": int((sex == FEMALE).sum()),
     }

@@ -249,8 +249,80 @@ fairness statistics pooled across hospitals. After the validation split,
 Long Beach has 1 woman and Switzerland 2 in their fit data, so their local
 penalties carry almost no information.
 
+## 2026-10-04 · Milestone 8: equal opportunity and global fairness statistics
+
+2×2 design, `run_fairtrade.py --notion {dp,eo} --scope {local,global}`, seeds
+42–51, same splits and trainer as above. `scripts/compare_fairtrade.py` makes
+the tables.
+- **Notion:** DP penalizes the gap in mean predicted risk across all patients.
+  EO penalizes it among truly sick patients only (a soft true-positive-rate gap).
+- **Scope:** `local` is FairTrade, where each hospital penalizes unfairness on
+  its own data. `global` is ours: each round every hospital reports
+  per-group (Σ prob, count) under the current global model, four numbers that
+  can be securely aggregated. Each hospital then penalizes the gap of the
+  global group means, differentiating its own part with the other hospitals'
+  part held fixed. Tests check that this equals the pooled penalty exactly and
+  that it gives a gradient to a hospital with no women.
+- **Selection change (applies to all four cells):** with about 6 sick women
+  per validation split, the thresholded EOD moves about 16 points per
+  patient. MOBO and operating-point selection therefore use **soft gaps**
+  (difference in mean predicted risk) on validation. Test results are
+  reported with the usual thresholded SPD and EOD. The test set has 15 sick
+  women, so test EOD is itself coarse (≈ 7 points per patient), and the CIs
+  below cover training variability only, not test-sampling noise.
+
+Test, all-centers, 10 seeds, mean ± 95% CI. Operating point = most accurate
+candidate with |val soft gap| ≤ 0.10 for the variant's own notion. HV =
+hypervolume of the validation Pareto front re-scored on test, in each space.
+
+| variant | balanced acc | SPD (F−M) | EOD (F−M) | HV (bacc, −\|SPD\|) | HV (bacc, −\|EOD\|) |
+|---|---|---|---|---|---|
+| FedAvg (same trainer) | 0.787 ± 0.016 | −0.342 ± 0.057 | −0.191 ± 0.085 | 0.047 ± 0.013 | 0.090 ± 0.024 |
+| FairTrade DP, local | 0.732 ± 0.023 | −0.012 ± 0.033 | +0.114 ± 0.031 | 0.132 ± 0.005 | 0.127 ± 0.011 |
+| FairTrade DP, global | 0.747 ± 0.010 | −0.013 ± 0.040 | +0.114 ± 0.041 | 0.132 ± 0.004 | 0.133 ± 0.010 |
+| FairTrade EO, local | 0.761 ± 0.056 | −0.208 ± 0.046 | −0.042 ± 0.089 | 0.101 ± 0.007 | 0.137 ± 0.010 |
+| FairTrade EO, global | 0.763 ± 0.042 | −0.227 ± 0.039 | −0.069 ± 0.084 | 0.103 ± 0.012 | 0.131 ± 0.010 |
+
+Paired (B − A):
+- DP global − local: HV −0.001 ± 0.004 (p=0.61); bacc +0.016 ± 0.019 (p=0.10, 7/10 up); |SPD| +0.013 ± 0.021 (p=0.18).
+- EO global − local: HV −0.007 ± 0.011 (p=0.20); bacc +0.003 ± 0.018 (p=0.74); |EOD| +0.019 ± 0.046 (p=0.37).
+- Local, EO − DP: HV in EOD space **+0.011 ± 0.010 (p=0.039, 9/10 up)**; bacc +0.029 ± 0.055 (p=0.26, 9/10 up).
+- Global, EO − DP: HV in EOD space −0.002 ± 0.012 (p=0.74).
+
+**Findings**
+1. **Global statistics do not beat FairTrade's local penalty on this dataset
+   (a null result).** The one hint is DP-global's more stable operating point
+   (balanced-acc CI ±0.010 vs ±0.023, +1.6 points, p=0.10). The likely
+   reason: 96% of women in the training data are at Cleveland and Hungary
+   (mean 47.6 and 38.3 per seed, vs 2.5 at Switzerland and 1.2 at Long
+   Beach). The two hospitals that carry nearly all of the fairness signal
+   already see enough women locally, and the two women-scarce hospitals
+   have small FedAvg weights. The failure mode the global penalty targets
+   (a protected group spread thinly across many small clients) is not
+   strongly present in Fed-Heart-Disease.
+2. **Equal opportunity is the better target for diagnosis.** With local
+   scope, EO-FairTrade shrinks the detection gap (EOD −0.19 → −0.04, CI
+   includes 0) without DP's over-diagnosis of women (DP: EOD +0.11). It keeps
+   more accuracy (0.761 vs 0.732, 9/10 seeds) and covers significantly more
+   of the (bacc, −|EOD|) space (p=0.039). SPD stays at about −0.21, which
+   reflects the real difference in disease rates (25% vs 60%).
+3. **Soft-gap selection helped DP-FairTrade too:** 0.732 balanced acc and
+   EOD +0.114, vs 0.718 and +0.138 with the hard-SPD selection above, at the
+   same SPD ≈ 0.
+4. **Remaining instability comes from tiny groups.** In both EO cells, seed
+   45 selects α at the search's upper bound (balanced acc 0.54–0.60), which
+   inflates the EO CIs. The fix is more validation signal (cross-validated
+   selection) or more data, not a different penalty.
+
+**Next:** test the global penalty where its failure mode is real: a stress
+test that spreads women thinly across many small clients, and later eICU
+(200+ hospitals).
+
 ## Raw runs
 
 Per-seed rows: `results/fedavg_heart_<norm>.csv`, `results/loho_heart.csv`,
-`results/baselines_heart.csv`. The 5-seed reproduction above is seeds 42–46
-of `fedavg_heart_local.csv`.
+`results/baselines_heart.csv`, `results/fairtrade_{candidates,summary}_<notion>_<scope>.csv`.
+The 5-seed reproduction above is seeds 42–46 of `fedavg_heart_local.csv`.
+The milestone-7 run (hard-SPD selection) is preserved in commit `d027dcb` as
+`results/fairtrade_{candidates,summary}.csv`. The current
+`*_dp_local.csv` files are its rerun with soft-gap selection.
