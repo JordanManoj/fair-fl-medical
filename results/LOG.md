@@ -318,6 +318,70 @@ Paired (B − A):
 test that spreads women thinly across many small clients, and later eICU
 (200+ hospitals).
 
+## 2026-10-04 · Milestone 9: stress test under sex segregation (`scripts/run_stress.py`, seeds 42–51)
+
+Same patients, re-split into 10 synthetic clients (`fairfl/partition.py`).
+Each fit patient goes to a random client with probability 1 − s, and with
+probability s to a sex-specific client (women → clients 0–1, men → 2–9).
+Validation and test sets are the original hospital splits; global
+normalization statistics do not depend on the partition. To isolate the
+penalty scope from the tuner, every variant uses the same α grid
+{1, 3, 10, 30, 100, 300, 1000} at FedAvg's validation-selected lr, plus
+FedAvg (α = 0) as a candidate. HV = test hypervolume of the validation Pareto
+front (own notion), operating point = most accurate candidate with
+|val soft gap| ≤ 0.10. Tests check that partitioning loses no patient and
+that at s = 1 every client is single-sex with a zero local penalty.
+
+| s | clients with both sexes | men in the 2 women-heavy clients |
+|---|---|---|
+| 0.0 | 10.0 / 10 | 56.9 |
+| 0.5 | 9.9 / 10 | 26.0 |
+| 0.8 | 8.6 / 10 | 10.3 |
+| 1.0 | 0 / 10 | 0 |
+
+Equal opportunity (HV over balanced acc, −|EOD|), mean ± 95% CI:
+
+| s | FedAvg EOD | local: bacc / EOD | global: bacc / EOD | HV local | HV global | HV global − local |
+|---|---|---|---|---|---|---|
+| 0.0 | −0.219 | 0.706 ± 0.091 / −0.107 | 0.781 ± 0.015 / −0.027 | 0.123 | 0.135 | +0.011 ± 0.022 (p=0.28) |
+| 0.5 | −0.151 | 0.736 ± 0.067 / −0.092 | 0.770 ± 0.017 / −0.053 | 0.122 | 0.128 | +0.006 ± 0.009 (p=0.16) |
+| 0.8 | −0.135 | 0.785 ± 0.018 / −0.096 | 0.777 ± 0.020 / −0.084 | 0.127 | 0.121 | −0.006 ± 0.013 (p=0.31) |
+| **1.0** | −0.213 | 0.790 / **−0.213 (= FedAvg)** | 0.785 ± 0.014 / **−0.061** | 0.082 | 0.114 | **+0.031 ± 0.020 (p=0.006, 8/10 up)** |
+
+Demographic parity (HV over balanced acc, −|SPD|):
+
+| s | FedAvg SPD | local: bacc / SPD | global: bacc / SPD | HV local | HV global | HV global − local |
+|---|---|---|---|---|---|---|
+| 0.0 | −0.336 | 0.712 / +0.057 | 0.734 / +0.067 | 0.129 | 0.127 | −0.002 ± 0.005 (p=0.33) |
+| 0.5 | −0.304 | 0.734 / +0.048 | 0.733 / +0.095 | 0.128 | 0.121 | −0.008 ± 0.010 (p=0.13) |
+| 0.8 | −0.317 | 0.698 / +0.027 | 0.740 / +0.063 | 0.128 | 0.124 | −0.003 ± 0.007 (p=0.28) |
+| **1.0** | −0.339 | 0.790 / **−0.339 (= FedAvg)** | 0.721 / **+0.103** | 0.046 | 0.127 | **+0.081 ± 0.010 (p<0.001, 10/10 up)** |
+
+**Findings**
+1. **When every client holds a single sex, FairTrade's per-client penalty
+   collapses to FedAvg.** Its numbers equal FedAvg's exactly. The global
+   penalty still works: hypervolume +0.081 for DP (10/10 seeds) and +0.031
+   for EO (p=0.006). This is the failure mode milestone 8 was designed for,
+   now shown directly.
+2. **The failure is a cliff, not a slope.** At s = 0.8, eight of ten clients
+   have 0–3 women, but the two women-heavy clients still hold about 10 men
+   between them. That is enough for the per-client penalty to steer the
+   whole federation, and local and global are not significantly different
+   at s ≤ 0.8 (all p ≥ 0.13).
+3. **The global penalty is never significantly worse.** Across all 8
+   comparisons, its worst HV difference is −0.008 (p=0.13). Under EO it also
+   gives much more stable operating points at low segregation (balanced acc
+   CI ±0.015 vs ±0.091 at s = 0). It works as a safe default: on par where
+   the local penalty works, and the only option that works where it doesn't.
+4. **Real-world relevance:** single-sex or nearly single-sex sites exist
+   (veterans' hospitals, women's clinics, maternity units). Long Beach VA
+   already has just 1 woman in its fit split. A cross-silo federation that
+   includes such sites and lacks mixed sites, e.g. per-department silos, is
+   exactly the s → 1 regime.
+5. **Caveat:** the partitions are semi-synthetic (real patients, synthetic
+   client assignment). Confirming this on a naturally segregated federation
+   (e.g. eICU's 200+ hospitals) is the next step for a thesis.
+
 ## Raw runs
 
 Per-seed rows: `results/fedavg_heart_<norm>.csv`, `results/loho_heart.csv`,

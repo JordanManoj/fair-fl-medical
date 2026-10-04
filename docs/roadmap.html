@@ -154,14 +154,14 @@ footer { font-size: 0.82rem; color: var(--muted); border-top: 1px solid var(--li
   <section aria-labelledby="progress-h">
     <h2 id="progress-h">Progress</h2>
     <div class="progress">
-      <div class="bar" role="img" aria-label="8 of 11 milestones done, 1 up next, 2 planned">
-        <span style="width:72.7%;background:var(--done)"></span>
+      <div class="bar" role="img" aria-label="9 of 11 milestones done, 1 up next, 1 planned">
+        <span style="width:81.8%;background:var(--done)"></span>
         <span style="width:9.1%;background:var(--active)"></span>
       </div>
       <div class="legend">
-        <span><i style="background:var(--done)"></i>8 done</span>
+        <span><i style="background:var(--done)"></i>9 done</span>
         <span><i style="background:var(--active)"></i>1 up next</span>
-        <span><i style="background:var(--planned-soft);border:1px solid var(--line)"></i>2 planned</span>
+        <span><i style="background:var(--planned-soft);border:1px solid var(--line)"></i>1 planned</span>
       </div>
     </div>
   </section>
@@ -275,18 +275,23 @@ footer { font-size: 0.82rem; color: var(--muted); border-top: 1px solid var(--li
         </div>
       </li>
 
-      <li class="ms active">
+      <li class="ms done">
         <div class="rail"><span class="node">9</span></div>
         <div class="body">
-          <div class="head"><h3>Stress test: where per-hospital fairness should fail</h3><span class="status">Up next</span><span class="when">Week 2</span></div>
-          <p>Re-split the same patients into many small clients so that women are spread thinly (a standard federated-learning stress test with skewed client composition). Here per-hospital fairness penalties see too few women to work, which is where pooled group totals should help. Compare all four FairTrade variants and FedAvg across levels of skew.</p>
+          <div class="head"><h3>Stress test: where per-hospital fairness fails</h3><span class="status">Done</span><span class="when">Week 1</span></div>
+          <p>Re-split the same patients into 10 clients with increasing sex segregation, up to clients that hold only women or only men, as at a veterans' hospital or a women's clinic. Compared per-hospital (FairTrade) and pooled (ours) fairness penalties at each level, 10 seeds.</p>
+          <div class="outcome">
+            <span>When every client holds a single sex, FairTrade's penalty switches off and its results equal FedAvg exactly. Our pooled version still works: hypervolume +0.081 for demographic parity (10/10 seeds, p &lt; 0.001) and +0.031 for equal opportunity (p = 0.006).</span>
+            <span>Below that, the two are on par: one client with both sexes is enough for FairTrade. Our version is never significantly worse, so it is a safe default that also covers the case where FairTrade breaks.</span>
+          </div>
+          <div class="files"><code>fairfl/partition.py</code><code>scripts/run_stress.py</code><code>results/stress_s*.csv</code></div>
         </div>
       </li>
 
-      <li class="ms planned">
+      <li class="ms active">
         <div class="rail"><span class="node">10</span></div>
         <div class="body">
-          <div class="head"><h3>Package and propose</h3><span class="status">Planned</span><span class="when">Weeks 5–6</span></div>
+          <div class="head"><h3>Package and propose</h3><span class="status">Up next</span><span class="when">Week 2</span></div>
           <p>Public GitHub repo, a 4–6 page report with one key figure, and a short email proposing the work as a Master's project or thesis.</p>
         </div>
       </li>
@@ -435,6 +440,18 @@ footer { font-size: 0.82rem; color: var(--muted); border-top: 1px solid var(--li
       </table>
     </div>
     <p class="note">Milestone 8, all-centers test set, mean of 10 seeds; each FairTrade row is the most accurate configuration with a validation fairness gap ≤ 0.10. Demographic parity over-corrects the detection gap (EOD +0.11). Equal opportunity closes it while keeping more accuracy. An SPD of about −0.21 under equal opportunity reflects the real difference in disease rates (25% of women vs 60% of men).</p>
+      <div class="table-wrap">
+      <table>
+        <thead><tr><th>Sex segregation</th><th>Clients with both sexes</th><th>Hypervolume gain, pooled vs per-hospital (DP)</th><th>Same, equal opportunity</th></tr></thead>
+        <tbody>
+          <tr><td>0% (normal mix)</td><td>10 / 10</td><td>−0.002 (n.s.)</td><td>+0.011 (n.s.)</td></tr>
+          <tr><td>50%</td><td>9.9 / 10</td><td>−0.008 (n.s.)</td><td>+0.006 (n.s.)</td></tr>
+          <tr><td>80%</td><td>8.6 / 10</td><td>−0.003 (n.s.)</td><td>−0.006 (n.s.)</td></tr>
+          <tr><td>100% (single-sex clients)</td><td class="flag">0 / 10</td><td><strong>+0.081</strong> (p &lt; 0.001, 10/10)</td><td><strong>+0.031</strong> (p = 0.006, 8/10)</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Milestone 9 stress test, 10 synthetic clients built from the real patients, 10 seeds; n.s. = not significant. FairTrade's per-hospital penalty needs at least one client that sees both sexes. Without one, it becomes plain FedAvg, and only the pooled penalty still improves fairness.</p>
   </section>
 
   <section aria-labelledby="data-h">

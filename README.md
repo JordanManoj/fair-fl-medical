@@ -62,6 +62,8 @@ python scripts/run_loho.py                            # leave-one-hospital-out, 
 python scripts/run_baselines.py                       # local + pooled baselines
 python scripts/run_fairtrade.py --notion eo --scope global  # FairTrade variants, ~10 min each
 python scripts/compare_fairtrade.py                    # paired comparison of the 4 variants
+python scripts/run_stress.py --segregation 1.0        # stress test, one level (~25 min)
+python scripts/run_stress.py --summarize              # stress-test tables
 python -m pytest tests                                # unit tests
 ```
 
