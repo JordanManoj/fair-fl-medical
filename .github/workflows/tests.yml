@@ -1,0 +1,26 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install CPU torch, FLamby (heart only) and pinned requirements
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install torch==2.14.1 --index-url https://download.pytorch.org/whl/cpu
+          git clone https://github.com/owkin/FLamby.git external/FLamby
+          git -C external/FLamby checkout --quiet edacf54d5211520583b0133d55ac39b6fda8324b
+          python -m pip install -e "external/FLamby[heart]"
+          python -m pip install -r requirements.txt
+      - name: Clone the original FairTrade challenge code (for the equivalence test)
+        run: git clone --depth 1 https://github.com/JordanManoj/HiWi-FairTrade-Challenge.git external/HiWi-FairTrade-Challenge
+      - name: Unit tests (no patient data needed)
+        run: python -m pytest -q tests
