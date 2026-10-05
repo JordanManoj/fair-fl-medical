@@ -11,6 +11,9 @@ FairTrade ported and evaluated (removes the sex gap in prediction rates at a
 cost of 7 balanced-accuracy points). See [results/LOG.md](results/LOG.md) and
 [docs/roadmap.html](docs/roadmap.html).
 
+**Report:** [report/report.pdf](report/report.pdf) (5 pages; source `report/report.html`,
+figures from `scripts/make_figures.py`).
+
 ## Setup
 
 ```bash
@@ -64,6 +67,7 @@ python scripts/run_fairtrade.py --notion eo --scope global  # FairTrade variants
 python scripts/compare_fairtrade.py                    # paired comparison of the 4 variants
 python scripts/run_stress.py --segregation 1.0        # stress test, one level (~25 min)
 python scripts/run_stress.py --summarize              # stress-test tables
+python scripts/make_figures.py                         # report figures from results/*.csv
 python -m pytest tests                                # unit tests
 ```
 

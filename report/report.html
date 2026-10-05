@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fair Federated Learning on Real Hospital Data</title>
+<style>
+  @page { size: A4; margin: 20mm 19mm 20mm 19mm; }
+  :root {
+    --ink: #111418; --ink2: #4a5058; --rule: #c9ced4; --soft: #f2f4f6; --accent: #1d5c86;
+    --serif: "Cambria", "Charter", Georgia, "Times New Roman", serif;
+    --sans: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    --mono: "Consolas", "Cascadia Mono", ui-monospace, monospace;
+  }
+  html { background: #fff; }
+  body { margin: 0; color: var(--ink); font-family: var(--serif); font-size: 10.2pt; line-height: 1.42;
+         text-align: justify; hyphens: auto; }
+  .page { max-width: 172mm; margin: 0 auto; }
+  h1 { font-family: var(--sans); font-size: 17pt; line-height: 1.2; margin: 0 0 6pt; text-align: left;
+       font-weight: 650; letter-spacing: -0.01em; text-wrap: balance; }
+  .byline { font-family: var(--sans); font-size: 9.5pt; color: var(--ink2); text-align: left; margin-bottom: 12pt; }
+  .abstract { border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); padding: 8pt 0; margin-bottom: 12pt; }
+  .abstract b { font-family: var(--sans); font-size: 9pt; letter-spacing: 0.04em; text-transform: uppercase; }
+  h2 { font-family: var(--sans); font-size: 11.5pt; margin: 14pt 0 4pt; font-weight: 650; text-align: left;
+       break-after: avoid; }
+  h3 { font-family: var(--sans); font-size: 10pt; margin: 9pt 0 2pt; font-weight: 600; break-after: avoid; }
+  p { margin: 0 0 6pt; }
+  ul, ol { margin: 0 0 6pt; padding-left: 16pt; }
+  li { margin-bottom: 2pt; }
+  table { border-collapse: collapse; width: 100%; font-family: var(--sans); font-size: 8.4pt;
+          font-variant-numeric: tabular-nums; margin: 4pt 0 3pt; break-inside: avoid; text-align: left; }
+  th, td { padding: 2.6pt 5pt; border-bottom: 0.6pt solid var(--rule); vertical-align: top; }
+  thead th { border-bottom: 1pt solid var(--ink); font-weight: 600; }
+  tbody tr:last-child td { border-bottom: 1pt solid var(--ink); }
+  td.num, th.num { text-align: right; white-space: nowrap; }
+  .caption { font-family: var(--sans); font-size: 8.3pt; color: var(--ink2); margin: 2pt 0 10pt; text-align: left; }
+  .caption b { color: var(--ink); }
+  figure { margin: 8pt 0 4pt; break-inside: avoid; }
+  figure img { display: block; width: 100%; }
+  figure.narrow img { width: 72%; margin: 0 auto; }
+  .box { background: var(--soft); padding: 7pt 9pt; margin: 8pt 0; break-inside: avoid; font-size: 9.4pt; }
+  .box b.t { font-family: var(--sans); font-size: 8.6pt; letter-spacing: 0.04em; text-transform: uppercase; display: block; margin-bottom: 2pt; }
+  code { font-family: var(--mono); font-size: 8.6pt; }
+  .refs { font-size: 8.8pt; text-align: left; }
+  .refs li { margin-bottom: 3pt; }
+  strong { font-weight: 650; }
+  .hl { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="page">
+
+<h1>Fair Federated Learning on Real Hospital Data:<br>FairTrade on FLamby Fed-Heart-Disease</h1>
+<div class="byline">Jordan Manoj Cheruvathoor · MSc Informatik, Leibniz Universität Hannover · October 2026<br>
+Code and per-seed results: <code>github.com/JordanManoj/fair-fl-medical</code> (results at commit <code>7080ef0</code>)</div>
+
+<div class="abstract">
+<b>Abstract.</b> Fair federated learning methods are mostly evaluated on census-style benchmarks with
+synthetic client splits. This report tests them on a real cross-silo medical federation: FLamby's
+Fed-Heart-Disease, with four hospitals, 740 patients and sex as the sensitive attribute. I reproduce
+FLamby's baselines exactly (all per-seed local-model accuracies match the published files), port FairTrade
+(AAAI 2024) to the per-hospital loaders, and run every comparison over 10 seeds with 95% confidence
+intervals and validation-only model selection. Four findings stand out. (1) FLamby's pooled-test
+convention overstates federated accuracy (0.748 vs 0.705 under the normalization clients actually use).
+(2) Every accuracy gain, from federated normalization to pooled training, widens the sex gap. (3) Because
+heart disease is far more common among men in this data (60% vs 25%), demographic parity over-diagnoses
+women; equal opportunity is the better target and covers significantly more of the trade-off space
+(p = 0.039). (4) FairTrade's per-client fairness penalty switches off entirely when no client sees both
+sexes; computing it from four securely aggregatable group totals per client keeps it working
+(hypervolume +0.081, p &lt; 0.001), at no significant cost elsewhere.
+</div>
+
+<h2>1&nbsp;&nbsp;Question and setting</h2>
+<p>Hospitals cannot pool patient records, so federated learning (FL) trains one model by averaging
+locally trained updates [3]. A shared model can still treat patient groups unequally, and FL adds a
+difficulty centralized training lacks: each hospital sees only its own patients, so it may see few or no
+members of a protected group. FairTrade [2] addresses fairness in FL with a fairness-penalized local
+objective and multi-objective Bayesian optimization (MOBO) that returns Pareto-optimal accuracy–fairness
+trade-offs. The question here is whether that machinery survives a real cross-silo medical federation,
+and what has to change where it does not.</p>
+
+<p><strong>Data.</strong> Fed-Heart-Disease [1, 5] has four hospitals with FLamby's fixed train/test
+split. The model input has 13 features (FLamby drops three UCI columns and one-hot encodes two). Sex is
+both an input and the sensitive attribute (female = protected). Table 1 shows why this data is a hard test.</p>
+
+<table>
+<thead><tr><th>Hospital</th><th class="num">Train</th><th class="num">Test</th><th class="num">Women (train / test)</th><th class="num">Disease rate</th><th class="num">Cholesterol recorded as 0</th></tr></thead>
+<tbody>
+<tr><td>Cleveland</td><td class="num">199</td><td class="num">104</td><td class="num">63 / 34</td><td class="num">46%</td><td class="num">0%</td></tr>
+<tr><td>Hungary</td><td class="num">172</td><td class="num">89</td><td class="num">50 / 19</td><td class="num">38%</td><td class="num">0%</td></tr>
+<tr><td>Switzerland</td><td class="num">30</td><td class="num">16</td><td class="num">3 / 0</td><td class="num">100%</td><td class="num">100%</td></tr>
+<tr><td>Long Beach VA</td><td class="num">85</td><td class="num">45</td><td class="num">2 / 3</td><td class="num">78%</td><td class="num">≈25%</td></tr>
+</tbody>
+</table>
+<div class="caption"><b>Table 1.</b> Fed-Heart-Disease per hospital (disease rate on the training split). Over all
+740 patients, 24.7% of the 174 women and 60.1% of the 566 men have heart disease.</div>
+
+<p><strong>Protocol.</strong> Unless stated otherwise, results are on the union of the four test sets (254
+patients, 56 women; 15 of them sick), each hospital's data normalized as it was in training. Reported
+metrics: balanced accuracy, statistical parity difference SPD = P(ŷ=1 | F) − P(ŷ=1 | M), and equal
+opportunity difference EOD = TPR<sub>F</sub> − TPR<sub>M</sub> [4]. Undefined metrics (a group absent
+from a test set) are reported as n/a, never 0. Every configuration runs over 10 seeds (42–51) and
+reports mean ± 95% t-interval. Comparisons are paired by seed. All preprocessing statistics are fit on
+training data only. For tuned methods, each hospital's training split is further divided 75/25 into fit
+and validation parts, and <em>all</em> selection uses validation metrics only.</p>
+
+<h2>2&nbsp;&nbsp;Baselines and two evaluation pitfalls</h2>
+<p><strong>Reproduction.</strong> With FLamby's code and hyperparameters, FedAvg reaches 0.748 ± 0.027 (std)
+on FLamby's pooled test, identical to the published value. All 100 published per-seed accuracies of the
+local models (4 models × 5 test sets × 5 seeds) are matched exactly, as are 24 of 25 FedAvg values (one
+differs by a single patient).</p>
+
+<p><strong>Pitfall 1: pooled-test normalization.</strong> FLamby normalizes its pooled test set with
+statistics of all training data combined, which no FL client has. Evaluated under the per-hospital
+normalization the model was trained with, the same FedAvg models score 0.705, not 0.748. The same
+mismatch affects FLamby's per-hospital numbers for the pooled-training baseline (e.g. Long Beach: 0.644
+reported vs 0.822 with consistent normalization).</p>
+
+<p><strong>Pitfall 2: accuracy at high-prevalence sites.</strong> Sharing only per-hospital counts, sums and
+sums of squares lets all hospitals normalize with global statistics. This raises balanced accuracy by
++0.060 ± 0.019 (10/10 seeds), and imputing the zero-coded missing cholesterol values rules out a
+"missing = sick" shortcut. A leave-one-hospital-out test shows the gain partly generalizes to unseen
+hospitals with balanced disease rates (+0.025 Cleveland, +0.029 Hungary, both p &lt; 0.05). At Long Beach (78%
+sick), however, accuracy rises by 11 points while balanced accuracy <em>falls</em> by 6 (p = 0.004).
+Accuracy alone is therefore misleading here, and balanced accuracy is used throughout.</p>
+
+<table>
+<thead><tr><th>Model (10 seeds, all-centers test)</th><th class="num">Balanced accuracy</th><th class="num">SPD (F − M)</th><th class="num">EOD (F − M)</th></tr></thead>
+<tbody>
+<tr><td>FedAvg, FLamby settings, per-hospital normalization</td><td class="num">0.704 ± 0.009</td><td class="num">−0.160 ± 0.096</td><td class="num">−0.049 ± 0.121</td></tr>
+<tr><td>FedAvg, FLamby settings, federated normalization</td><td class="num">0.764 ± 0.014</td><td class="num">−0.242 ± 0.078</td><td class="num">−0.111 ± 0.102</td></tr>
+<tr><td>Pooled training (no privacy; upper bound)</td><td class="num">0.795 ± 0.002</td><td class="num">−0.322 ± 0.003</td><td class="num">−0.156 ± 0.003</td></tr>
+<tr><td>Cleveland alone</td><td class="num">0.736 ± 0.006</td><td class="num">−0.199 ± 0.019</td><td class="num">−0.119 ± 0.043</td></tr>
+</tbody>
+</table>
+<div class="caption"><b>Table 2.</b> The more accurate the model, the larger the sex gap: better use of the data amplifies
+the difference in disease rates already present in the labels.</div>
+
+<h2>3&nbsp;&nbsp;FairTrade on real hospitals</h2>
+<p><strong>Port.</strong> Each client minimizes BCE + α · Σ<sub>g</sub>(m<sub>g</sub> − m)², where m<sub>g</sub> is
+group g's mean predicted risk and m the overall mean. Training uses full-batch local Adam (30 rounds × 10
+steps) with size-weighted FedAvg aggregation. MOBO (8 Sobol + 16 qLogNEHVI [6] steps) searches over
+(α, learning rate) to maximize validation balanced accuracy and fairness. A unit test confirms that the
+ported penalty equals the original <code>DemographicParityLoss</code> numerically. The baseline "FedAvg" in
+this section is the same trainer with α = 0 and a validation-tuned learning rate. It reaches 0.787,
+higher than FLamby's FedAvg, so every comparison below uses the same trainer for both methods.</p>
+
+<div class="box"><b class="t">Implementation issues fixed in the port</b>
+My challenge implementation of FairTrade had six problems, all fixed here. (i) MOBO objectives were
+computed on the test set. (ii) The hypervolume reference point lay above every attainable objective, so
+every hypervolume improvement was zero and the search was effectively random. (iii) Every candidate
+evaluation also updated one shared global model. (iv) Probabilities passed through two sigmoids.
+(v) Clients were averaged without size weights. (vi) The ATE option referenced an undefined class.</div>
+
+<p><strong>Result.</strong> FairTrade removes the sex gap in prediction rates: SPD goes from −0.342 to −0.012
+± 0.033, at a cost of 5.5 balanced-accuracy points (0.787 → 0.732). Its Pareto front nearly triples the
+test hypervolume in the (balanced accuracy, −|SPD|) plane (0.047 → 0.132). But it pushes EOD to
+<span class="hl">+0.114 ± 0.031</span>: sick women are now detected <em>more</em> often than sick men. This is the
+expected incompatibility of parity and error-rate fairness when base rates differ [4]. With disease rates
+of 25% and 60%, equal prediction rates can only be reached by over-diagnosing women.</p>
+
+<h2>4&nbsp;&nbsp;Equal opportunity and pooled group totals</h2>
+<p>I varied FairTrade along two axes. <strong>Notion:</strong> demographic parity (DP) or equal opportunity (EO),
+the same penalty restricted to truly sick patients. <strong>Scope:</strong> <em>local</em> (FairTrade: each client
+measures fairness on its own patients) or <em>pooled</em>. In the pooled scope, at the start of each round
+every client reports per-group (Σ predicted risk, count) under the current global model, four numbers that
+secure aggregation can protect. Each client then penalizes the gap between the <em>global</em> group means,
+differentiating its own part and holding the other clients' part fixed. A unit test checks that this
+equals the penalty on all data combined. Related ideas, deriving fairness from aggregated group
+statistics, appear in prior fair-FL work such as FairFed [7]. The contribution here is evaluating the
+idea inside FairTrade on real hospital data. With only about 6 sick women per validation split,
+thresholded EOD moves about 16 points per patient. Model selection therefore uses soft gaps (differences
+in mean predicted risk), while test results are reported with the usual thresholded SPD and EOD.</p>
+
+<figure><img src="fig_tradeoff.svg" alt="Balanced accuracy against SPD (left) and EOD (right) for FedAvg, FairTrade-DP, FairTrade-EO local and FairTrade-EO pooled"></figure>
+<div class="caption"><b>Figure 1.</b> Operating points (most accurate candidate with validation |soft gap| ≤ 0.10) on the
+all-centers test set; large markers with 95% CIs, small dots = individual seeds. DP reaches SPD ≈ 0 but
+overshoots to EOD ≈ +0.11. EO closes the detection gap while keeping more accuracy. Its remaining SPD of
+about −0.21 reflects the real difference in disease rates. Numbers in Table 3.</div>
+
+<table>
+<thead><tr><th>Variant (10 seeds)</th><th class="num">Balanced accuracy</th><th class="num">SPD</th><th class="num">EOD</th><th class="num">HV (bacc, −|SPD|)</th><th class="num">HV (bacc, −|EOD|)</th></tr></thead>
+<tbody>
+<tr><td>FedAvg (same trainer)</td><td class="num">0.787 ± 0.016</td><td class="num">−0.342</td><td class="num">−0.191</td><td class="num">0.047</td><td class="num">0.090</td></tr>
+<tr><td>FairTrade-DP, local</td><td class="num">0.732 ± 0.023</td><td class="num">−0.012</td><td class="num">+0.114</td><td class="num">0.132</td><td class="num">0.127</td></tr>
+<tr><td>FairTrade-DP, pooled</td><td class="num">0.747 ± 0.010</td><td class="num">−0.013</td><td class="num">+0.114</td><td class="num">0.132</td><td class="num">0.133</td></tr>
+<tr><td>FairTrade-EO, local</td><td class="num">0.761 ± 0.056</td><td class="num">−0.208</td><td class="num">−0.042</td><td class="num">0.101</td><td class="num"><strong>0.137</strong></td></tr>
+<tr><td>FairTrade-EO, pooled</td><td class="num">0.763 ± 0.042</td><td class="num">−0.227</td><td class="num">−0.069</td><td class="num">0.103</td><td class="num">0.131</td></tr>
+</tbody>
+</table>
+<div class="caption"><b>Table 3.</b> HV = test hypervolume of the validation Pareto front, reference point (0.5, −0.5).
+Paired over seeds: EO vs DP (local) in the EOD space +0.011 ± 0.010 (p = 0.039, 9/10 seeds); pooled vs local:
+not significant for either notion (p ≥ 0.10).</div>
+
+<p>Equal opportunity is the better target for this diagnostic task. On the real hospitals, however, pooled
+totals bring no significant gain. 96% of the women in the fit data are at Cleveland and Hungary (on
+average 48 and 38 per seed, vs 2.5 at Switzerland and 1.2 at Long Beach), so those two hospitals'
+local penalties already carry almost all of the fairness signal.</p>
+
+<h2>5&nbsp;&nbsp;Stress test: when no client sees both sexes</h2>
+<p>To test the failure mode the pooled penalty targets, I re-split the same fit patients into 10 clients.
+With probability s a patient goes to a sex-specific client (women to clients 0–1, men to 2–9), otherwise
+to a random one. Validation and test sets remain the original hospital splits. Every variant gets the
+same α grid {1, …, 1000} at FedAvg's validation-selected learning rate, which isolates the penalty
+scope from the tuner. This partition is motivated by real single-sex sites such as veterans' hospitals
+and women's clinics. Long Beach VA already has a single woman in its fit split.</p>
+
+<figure class="narrow"><img src="fig_stress.svg" alt="Hypervolume gain of pooled over per-hospital penalty at 0, 50, 80 and 100 percent segregation"></figure>
+<div class="caption"><b>Figure 2.</b> Test hypervolume gain of the pooled over the local penalty (own notion's space),
+mean and 95% CI over 10 seeds. Clients with both sexes: 10, 9.9, 8.6 and 0 of 10 at s = 0, 0.5, 0.8, 1.
+Gains at s = 1: DP +0.081 ± 0.010 (p &lt; 0.001, 10/10 seeds), EO +0.031 ± 0.020 (p = 0.006, 8/10); all
+gains at s ≤ 0.8 are not significant (p ≥ 0.13).</div>
+
+<p>At s = 1 the local penalty is identically zero, and FairTrade's results equal FedAvg's <em>exactly</em>. The
+pooled penalty still works: under EO it reduces the detection gap from −0.213 to −0.061 at nearly unchanged
+balanced accuracy (0.790 → 0.785). The failure is a cliff, not a slope. At s = 0.8 the two women-heavy
+clients still hold about 10 men between them, which is enough for local penalties to steer the
+federation. Across all eight comparisons, the pooled penalty is never significantly worse, which makes it
+a safe default.</p>
+
+<h2>6&nbsp;&nbsp;Limitations</h2>
+<ul>
+<li><strong>Small groups.</strong> The test set has 15 sick women, so test EOD moves about 7 points per patient,
+and the CIs reflect training variability, not test-sampling noise. In one seed, EO selection picked α at
+the search bound (balanced accuracy 0.54–0.60).</li>
+<li><strong>Semi-synthetic stress test.</strong> The segregated partitions use real patients but synthetic client
+assignment. A naturally segregated federation is needed to confirm it.</li>
+<li><strong>Scope.</strong> One small tabular dataset (13 features, logistic regression), one binary sensitive
+attribute, honest-but-curious privacy assumptions for the four shared numbers, and no formal
+differential-privacy accounting.</li>
+<li><strong>Novelty.</strong> I have not yet done a systematic literature review of aggregated-statistics fairness in FL.</li>
+</ul>
+
+<h2>7&nbsp;&nbsp;Proposed next steps (thesis directions)</h2>
+<ol>
+<li><strong>A naturally segregated federation:</strong> eICU (200+ US ICUs with sex, age and ethnicity) to test
+whether the pooled penalty matters at realistic scale and heterogeneity.</li>
+<li><strong>Robust selection under tiny groups:</strong> cross-validated or Bayesian estimates of EOD for MOBO,
+plus test-set bootstrap intervals.</li>
+<li><strong>Privacy of the shared totals:</strong> secure aggregation and differentially private group counts,
+and their effect on the trade-off.</li>
+<li><strong>Imaging:</strong> Fed-ISIC2019 (skin lesions, 6 sources) to move beyond logistic regression.</li>
+</ol>
+
+<div class="box"><b class="t">Reproducibility</b>
+Python 3.11, pinned versions in <code>requirements.txt</code>, FLamby pinned at <code>edacf54</code>. One command sets
+up the environment and data (<code>scripts/setup.sh</code>). Each table above has its own script
+(<code>run_fedavg.py</code>, <code>run_baselines.py</code>, <code>run_loho.py</code>, <code>run_fairtrade.py</code>,
+<code>compare_fairtrade.py</code>, <code>run_stress.py</code>) and per-seed CSVs in <code>results/</code>; the figures are
+generated by <code>make_figures.py</code>. A full run log with every decision is in <code>results/LOG.md</code>, and
+10 unit tests run with <code>pytest</code>.</div>
+
+<h2>References</h2>
+<ol class="refs">
+<li>J. Ogier du Terrail et al. FLamby: Datasets and benchmarks for cross-silo federated learning in realistic healthcare settings. <em>NeurIPS Datasets and Benchmarks</em>, 2022.</li>
+<li>M. Badar, S. Sikdar, W. Nejdl, M. Fisichella. FairTrade: Achieving Pareto-optimal trade-offs between balanced accuracy and fairness in federated learning. <em>AAAI</em>, 2024.</li>
+<li>B. McMahan, E. Moore, D. Ramage, S. Hampson, B. Agüera y Arcas. Communication-efficient learning of deep networks from decentralized data. <em>AISTATS</em>, 2017.</li>
+<li>M. Hardt, E. Price, N. Srebro. Equality of opportunity in supervised learning. <em>NeurIPS</em>, 2016.</li>
+<li>A. Janosi, W. Steinbrunn, M. Pfisterer, R. Detrano. Heart Disease. UCI Machine Learning Repository, 1988. CC BY 4.0.</li>
+<li>S. Daulton, M. Balandat, E. Bakshy. Parallel Bayesian optimization of multiple noisy objectives with expected hypervolume improvement. <em>NeurIPS</em>, 2021.</li>
+<li>Y. H. Ezzeldin, S. Yan, C. He, E. Ferrara, S. Avestimehr. FairFed: Enabling group fairness in federated learning. <em>AAAI</em>, 2023.</li>
+</ol>
+
+</div>
+</body>
+</html>
