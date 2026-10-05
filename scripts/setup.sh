@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # Reproducible environment + data setup for Fed-Heart-Disease.
+#
 # Usage:  bash scripts/setup.sh [path/to/venv]
+#   PYTHON=/path/to/python3.11   interpreter to build the venv with (default: python3.11)
+#   HEART_DATA=/path/to/folder   reuse an existing download instead of downloading
+#
 # Requires Python 3.10 or 3.11 (FLamby targets 3.10; tested here on 3.11).
 set -euo pipefail
 
@@ -25,7 +29,13 @@ git -C "$ROOT/external/FLamby" checkout --quiet "$FLAMBY_COMMIT"
 "$VPY" -m pip install -e "$ROOT/external/FLamby[heart]"
 "$VPY" -m pip install -r "$ROOT/requirements.txt"
 
-# Download (prompts you to accept the UCI CC BY 4.0 data terms).
-mkdir -p "$ROOT/data/heart"
-cd "$ROOT/external/FLamby/flamby/datasets/fed_heart_disease/dataset_creation_scripts"
-"$VPY" download.py --output-folder "$ROOT/data/heart"
+if [ -n "${HEART_DATA:-}" ]; then
+  "$VPY" "$ROOT/scripts/register_data.py" "$HEART_DATA"
+else
+  # Download (prompts you to accept the UCI CC BY 4.0 data terms).
+  mkdir -p "$ROOT/data/heart"
+  cd "$ROOT/external/FLamby/flamby/datasets/fed_heart_disease/dataset_creation_scripts"
+  "$VPY" download.py --output-folder "$ROOT/data/heart"
+fi
+
+echo "Done. Activate the venv and run:  python -m pytest tests && python scripts/run_fedavg.py"
