@@ -25,10 +25,16 @@ only.
    (EOD +0.11). Equal-opportunity FairTrade closes the detection gap
    (EOD −0.19 → −0.04), keeps more accuracy, and covers significantly more of
    the trade-off space (p = 0.039).
-4. **FairTrade's per-client penalty switches off when no client sees both
-   sexes.** Computing it from four securely aggregatable group totals per
-   client keeps it working: hypervolume +0.081 (p < 0.001) under full
-   segregation. It is never significantly worse elsewhere.
+4. **FairTrade beats FedFB and Fed-FUEL on the real hospitals.** Under one
+   protocol (same trainer, splits, validation-only selection), FairTrade has
+   the best trade-off in both notions, and equal-opportunity FairTrade is the
+   only method whose accuracy cost is not significant once test-sampling noise
+   is included (two-level bootstrap).
+5. **FairTrade's per-client penalty switches off when no client sees both
+   sexes.** A FedGFT-style global penalty (Wang et al., 2023), built from four
+   securely aggregatable group totals per client, keeps it working:
+   hypervolume +0.081 (p < 0.001) under full segregation. It is never
+   significantly worse elsewhere.
 
 <p align="center"><img src="report/fig_tradeoff.svg" width="760" alt="Balanced accuracy against SPD and EOD for FedAvg and FairTrade variants"></p>
 
@@ -42,7 +48,7 @@ git clone https://github.com/JordanManoj/fair-fl-medical.git
 cd fair-fl-medical
 bash scripts/setup.sh          # venv in ./.venv, FLamby pinned to edacf54, data -> data/heart
 source .venv/bin/activate      # Windows Git Bash: source .venv/Scripts/activate
-python -m pytest tests         # 10 unit tests (1 skips unless the original FairTrade code is in external/)
+python -m pytest tests         # 13 unit tests (1 skips unless the original FairTrade code is in external/)
 python scripts/run_fedavg.py   # FedAvg baseline, ~45 s
 ```
 
@@ -61,6 +67,7 @@ reuses an existing download (verified by MD5) instead of downloading.
 | Leave-one-hospital-out | `python scripts/run_loho.py` | `results/loho_heart.csv` | ~15 min |
 | FairTrade, 2×2 notion × scope | `python scripts/run_fairtrade.py --notion {dp,eo} --scope {local,global}` | `results/fairtrade_*_<notion>_<scope>.csv` | ~10 min each |
 | 2×2 comparison table | `python scripts/compare_fairtrade.py` | stdout | seconds |
+| FedAvg vs FairTrade vs FedFB vs Fed-FUEL, with bootstrap | `python scripts/run_compare.py`, then `--summarize` | `results/compare/` | ~15 min |
 | Segregation stress test | `python scripts/run_stress.py --segregation {0.0,0.5,0.8,1.0}`, then `--summarize` | `results/stress_s<level>.csv` | ~25 min per level |
 | Report figures | `python scripts/make_figures.py` | `report/fig_*.svg` | seconds |
 
@@ -107,7 +114,7 @@ Long Beach patients.
 ## Layout
 
 ```
-fairfl/     data loaders with sex labels, metrics + CIs, FairTrade, client partitioning
+fairfl/     data loaders with sex labels, metrics + CIs, FairTrade, FedFB, Fed-FUEL, client partitioning
 scripts/    setup and one script per experiment (see table above)
 tests/      unit tests
 results/    LOG.md (run log) and per-seed CSVs for every result
@@ -125,5 +132,8 @@ Machine Learning Repository, CC BY 4.0. The data is not redistributed here.
 Benchmark: Ogier du Terrail et al., *FLamby*, NeurIPS 2022 Datasets and
 Benchmarks (MIT).
 Method: Badar, Sikdar, Nejdl & Fisichella, *FairTrade*, AAAI 2024.
+Baselines ported from their official code: FedFB (Zeng, Chen & Lee, 2021) and
+Fed-FUEL (Badar et al., DMKD 2025). The global penalty follows FedGFT
+(Wang, Payani, Lee & Kompella, 2023).
 
 Author: Jordan Manoj Cheruvathoor, MSc Informatik, Leibniz Universität Hannover.

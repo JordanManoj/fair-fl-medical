@@ -154,11 +154,11 @@ footer { font-size: 0.82rem; color: var(--muted); border-top: 1px solid var(--li
   <section aria-labelledby="progress-h">
     <h2 id="progress-h">Progress</h2>
     <div class="progress">
-      <div class="bar" role="img" aria-label="10 of 11 milestones done, 1 planned">
-        <span style="width:90.9%;background:var(--done)"></span>
+      <div class="bar" role="img" aria-label="11 of 12 milestones done, 1 planned">
+        <span style="width:91.7%;background:var(--done)"></span>
       </div>
       <div class="legend">
-        <span><i style="background:var(--done)"></i>10 done</span>
+        <span><i style="background:var(--done)"></i>11 done</span>
                 <span><i style="background:var(--planned-soft);border:1px solid var(--line)"></i>1 planned</span>
       </div>
     </div>
@@ -300,9 +300,22 @@ footer { font-size: 0.82rem; color: var(--muted); border-top: 1px solid var(--li
         </div>
       </li>
 
+      <li class="ms done">
+        <div class="rail"><span class="node">11</span></div>
+        <div class="body">
+          <div class="head"><h3>Phase 1 close-out (v1.0)</h3><span class="status">Done</span><span class="when">Week 2</span></div>
+          <p>Ported FedFB and Fed-FUEL from their official code onto the same trainer and compared all seven methods under one protocol, with a two-level bootstrap over seeds and test patients. Verified every report reference and ran a literature check on global fairness from pooled statistics.</p>
+          <div class="outcome">
+            <span>FairTrade has the best trade-off in both fairness notions; it beats Fed-FUEL under demographic parity (p = 0.019). Equal-opportunity FairTrade is the only method whose accuracy cost is not significant once test-sampling noise is included.</span>
+            <span>Literature check: the pooled-statistics penalty is not new (FedGFT, 2023). The project now frames it as a FedGFT-style global penalty inside FairTrade; the stress test and the clinical evaluation remain its own.</span>
+          </div>
+          <div class="files"><code>fairfl/baselines.py</code><code>scripts/run_compare.py</code><code>results/compare/</code></div>
+        </div>
+      </li>
+
       <li class="phase-label">Phase 2 · later</li>
       <li class="ms planned">
-        <div class="rail"><span class="node">11</span></div>
+        <div class="rail"><span class="node">12</span></div>
         <div class="body">
           <div class="head"><h3>Scale up the data</h3><span class="status">Planned</span><span class="when">After week 6</span></div>
           <p>Run the same method on harder data: eICU (200+ real ICUs; access needs PhysioNet credentialing, about 1–2 weeks) or FLamby's imaging sets, Fed-ISIC2019 and Fed-Camelyon16 (GPU).</p>

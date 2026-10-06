@@ -382,6 +382,84 @@ Demographic parity (HV over balanced acc, −|SPD|):
    client assignment). Confirming this on a naturally segregated federation
    (e.g. eICU's 200+ hospitals) is the next step for a thesis.
 
+## 2026-10-06 · Phase-1 close-out: FedFB, Fed-FUEL and bootstrap CIs (`scripts/run_compare.py`, seeds 42–51)
+
+**Literature check.** Pooled-statistics fairness is not new.
+[FedGFT](https://arxiv.org/abs/2305.09931) (Wang, Payani, Lee & Kompella, 2023)
+proves that global fairness can be computed from client summary statistics and
+trains on such a global penalty. [Rychener, Kuhn & Hu](https://raw.githubusercontent.com/mlresearch/v258/main/assets/rychener25a/rychener25a.pdf)
+(AISTATS 2025) do it with shared prediction samples. FedFB and FairFed also use
+server-side group statistics. Our `scope=global` penalty is therefore a
+FedGFT-style global penalty inside FairTrade. What stays ours: the
+real-hospital evaluation, the stress test showing exactly when FairTrade's local
+penalty breaks, and the equal-opportunity finding. Both uncertain report
+references were verified: FairTrade (AAAI 38(10), 10962–10970) and FairFed
+(AAAI 37(6), 7494–7502).
+
+**Protocol.** All seven methods use the same trainer, splits and
+federated-impute normalization. Each fair method sweeps its own fairness knob
+on a fixed grid at FedAvg's validation-selected learning rate, with FedAvg as a
+candidate: FairTrade α ∈ {1…1000}, FedFB α ∈ {0.003…3}, Fed-FUEL λ₀ ∈
+{0.025…0.4}. The operating point is the most accurate candidate that at least
+**halves FedAvg's validation soft gap**. A fixed 0.10 threshold failed here:
+soft EOD runs on a smaller scale, so FedAvg itself passed and every EO method
+collapsed to it. Ports and their documented fixes are in `fairfl/baselines.py`
+(FedFB: proper weighted averaging, per-group λ bounds, constant term once per
+round; Fed-FUEL: client validation instead of client test data, true SMOTE
+interpolation). Test predictions per candidate are stored in
+`results/compare/seed*.npz` for the bootstrap.
+
+All-centers test, operating points, mean ± 95% CI over seeds:
+
+| method | balanced acc | SPD (F−M) | EOD (F−M) | HV (bacc, −\|SPD\|) | HV (bacc, −\|EOD\|) |
+|---|---|---|---|---|---|
+| FedAvg | 0.787 ± 0.016 | −0.346 ± 0.058 | −0.202 ± 0.077 | 0.046 | 0.087 |
+| FairTrade-DP | 0.758 ± 0.013 | −0.039 ± 0.035 | +0.090 ± 0.037 | **0.135** | 0.130 |
+| FedFB (DP) | 0.754 ± 0.012 | −0.040 ± 0.057 | +0.112 ± 0.045 | 0.126 | 0.130 |
+| Fed-FUEL-DP | 0.737 ± 0.020 | −0.022 ± 0.036 | +0.100 ± 0.050 | 0.126 | 0.117 |
+| FairTrade-EO, local | 0.770 ± 0.017 | −0.210 ± 0.040 | −0.031 ± 0.058 | 0.095 | **0.131** |
+| FairTrade-EO, global | 0.775 ± 0.014 | −0.190 ± 0.053 | −0.001 ± 0.061 | 0.098 | 0.128 |
+| Fed-FUEL-EO | 0.750 ± 0.015 | −0.167 ± 0.095 | +0.001 ± 0.124 | 0.086 | 0.113 |
+
+Hypervolume gain vs FedAvg in the method's own space: every method improves it
+in 10/10 seeds (p ≤ 0.002), except Fed-FUEL-EO (+0.026, p=0.063, 9/10).
+Head-to-head (paired over seeds):
+- FairTrade-DP vs FedFB, HV(SPD): +0.009 ± 0.010 (p=0.052, 8/10). Vs Fed-FUEL-DP: +0.009 ± 0.007 (p=0.019, 9/10).
+- FairTrade-EO vs Fed-FUEL-EO, HV(EOD): +0.019 ± 0.023 (p=0.096).
+- FairTrade-EO global − local, HV(EOD): −0.003 ± 0.012 (p=0.55): no difference on the real hospitals, as in milestone 8.
+- Balanced accuracy at the operating point, FairTrade-EO vs FairTrade-DP: +0.013 ± 0.011 (p=0.024). Vs FedFB: +0.016 ± 0.015 (p=0.033).
+
+Two-level bootstrap (resampling seeds and the 254 test patients, B = 2000),
+95% percentile intervals of the difference to FedAvg:
+
+| method | Δ balanced acc | Δ SPD | Δ EOD |
+|---|---|---|---|
+| FairTrade-DP | [−0.060, +0.001] | [+0.216, +0.406] | [+0.121, +0.488] |
+| FedFB | [−0.065, −0.003] | [+0.210, +0.408] | [+0.156, +0.500] |
+| Fed-FUEL-DP | [−0.083, −0.017] | [+0.224, +0.434] | [+0.137, +0.489] |
+| FairTrade-EO, local | [−0.038, +0.002] | [+0.068, +0.221] | [+0.057, +0.317] |
+| FairTrade-EO, global | [−0.035, +0.011] | [+0.073, +0.270] | [+0.051, +0.393] |
+| Fed-FUEL-EO | [−0.071, −0.007] | [+0.051, +0.318] | [+0.006, +0.436] |
+
+**Findings**
+1. **FairTrade gives the best trade-off on real hospitals in both notions.**
+   Under DP its hypervolume beats Fed-FUEL (p=0.019) and is marginally above
+   FedFB (p=0.052). Under EO it beats Fed-FUEL-EO in mean (p=0.096, n.s.).
+2. **Equal opportunity is the cheaper fix.** FairTrade-EO keeps 1.3–1.6 more
+   points of balanced accuracy than the DP methods (p < 0.05). Its accuracy
+   cost against FedAvg is not significant even with test-sampling noise
+   included (bootstrap [−0.038, +0.002]).
+3. **Fed-FUEL is weakest here, and the reason is the hospitals.** It judges
+   fairness on each hospital's own validation split, and Switzerland and Long
+   Beach have 1 woman each there. Its EO variant is the noisiest of all
+   (EOD CI ±0.124).
+4. **Test-sampling noise is large for EOD, so the paired design matters.**
+   FedAvg's own EOD interval is [−0.437, +0.023] once test patients are
+   resampled (15 sick women), so on its own the test set cannot even confirm
+   FedAvg's detection gap. Paired differences to FedAvg exclude 0 for every
+   method in SPD and EOD, so the improvements hold. Absolute EOD values per
+   method should not be over-read.
+
 ## Raw runs
 
 Per-seed rows: `results/fedavg_heart_<norm>.csv`, `results/loho_heart.csv`,

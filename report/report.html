@@ -51,7 +51,7 @@
 
 <h1>Fair Federated Learning on Real Hospital Data:<br>FairTrade on FLamby Fed-Heart-Disease</h1>
 <div class="byline">Jordan Manoj Cheruvathoor · MSc Informatik, Leibniz Universität Hannover · October 2026<br>
-Code and per-seed results: <code>github.com/JordanManoj/fair-fl-medical</code> (results at commit <code>7080ef0</code>)</div>
+Code and per-seed results: <code>github.com/JordanManoj/fair-fl-medical</code> (release <code>v1.0</code>)</div>
 
 <div class="abstract">
 <b>Abstract.</b> Fair federated learning methods are mostly evaluated on census-style benchmarks with
@@ -64,9 +64,10 @@ convention overstates federated accuracy (0.748 vs 0.705 under the normalization
 (2) Every accuracy gain, from federated normalization to pooled training, widens the sex gap. (3) Because
 heart disease is far more common among men in this data (60% vs 25%), demographic parity over-diagnoses
 women; equal opportunity is the better target and covers significantly more of the trade-off space
-(p = 0.039). (4) FairTrade's per-client fairness penalty switches off entirely when no client sees both
-sexes; computing it from four securely aggregatable group totals per client keeps it working
-(hypervolume +0.081, p &lt; 0.001), at no significant cost elsewhere.
+(p = 0.039); against FedFB and Fed-FUEL under one protocol, equal-opportunity FairTrade keeps the most
+accuracy. (4) FairTrade's per-client fairness penalty switches off entirely when no client sees both
+sexes; a FedGFT-style global penalty built from four securely aggregatable group totals per client keeps
+it working (hypervolume +0.081, p &lt; 0.001), at no significant cost elsewhere.
 </div>
 
 <h2>1&nbsp;&nbsp;Question and setting</h2>
@@ -165,9 +166,10 @@ measures fairness on its own patients) or <em>pooled</em>. In the pooled scope, 
 every client reports per-group (Σ predicted risk, count) under the current global model, four numbers that
 secure aggregation can protect. Each client then penalizes the gap between the <em>global</em> group means,
 differentiating its own part and holding the other clients' part fixed. A unit test checks that this
-equals the penalty on all data combined. Related ideas, deriving fairness from aggregated group
-statistics, appear in prior fair-FL work such as FairFed [7]. The contribution here is evaluating the
-idea inside FairTrade on real hospital data. With only about 6 sick women per validation split,
+equals the penalty on all data combined. The idea is not new: FedGFT [8] shows that global fairness
+can be computed from client summary statistics and trains on such a global penalty, and related schemes
+appear in FedFB [10], FairFed [7] and Rychener et al. [9]. The contribution here is evaluating it inside
+FairTrade on real hospital data. With only about 6 sick women per validation split,
 thresholded EOD moves about 16 points per patient. Model selection therefore uses soft gaps (differences
 in mean predicted risk), while test results are reported with the usual thresholded SPD and EOD.</p>
 
@@ -196,7 +198,35 @@ totals bring no significant gain. 96% of the women in the fit data are at Clevel
 average 48 and 38 per seed, vs 2.5 at Switzerland and 1.2 at Long Beach), so those two hospitals'
 local penalties already carry almost all of the fairness signal.</p>
 
-<h2>5&nbsp;&nbsp;Stress test: when no client sees both sexes</h2>
+<h2>5&nbsp;&nbsp;Against FedFB and Fed-FUEL</h2>
+<p>To place FairTrade, I ported FedFB [10] and Fed-FUEL [11] from their official code onto the same trainer,
+splits and normalization; the few fixes made in porting are documented in the code. Every method sweeps
+its own fairness knob on a fixed grid, with FedAvg as a candidate, and its operating point is the most
+accurate candidate that at least halves FedAvg's validation gap. I also report a two-level bootstrap over
+seeds <em>and</em> test patients, which adds the test-sampling noise the seed intervals leave out.</p>
+
+<table>
+<thead><tr><th>Method (10 seeds)</th><th class="num">Balanced accuracy</th><th class="num">SPD</th><th class="num">EOD</th><th class="num">HV (bacc, −|SPD|)</th><th class="num">HV (bacc, −|EOD|)</th><th class="num">Δ bacc vs FedAvg, bootstrap</th></tr></thead>
+<tbody>
+<tr><td>FedAvg</td><td class="num">0.787 ± 0.016</td><td class="num">−0.346</td><td class="num">−0.202</td><td class="num">0.046</td><td class="num">0.087</td><td class="num">·</td></tr>
+<tr><td>FairTrade-DP</td><td class="num">0.758 ± 0.013</td><td class="num">−0.039</td><td class="num">+0.090</td><td class="num"><strong>0.135</strong></td><td class="num">0.130</td><td class="num">[−0.060, +0.001]</td></tr>
+<tr><td>FedFB (DP)</td><td class="num">0.754 ± 0.012</td><td class="num">−0.040</td><td class="num">+0.112</td><td class="num">0.126</td><td class="num">0.130</td><td class="num">[−0.065, −0.003]</td></tr>
+<tr><td>Fed-FUEL-DP</td><td class="num">0.737 ± 0.020</td><td class="num">−0.022</td><td class="num">+0.100</td><td class="num">0.126</td><td class="num">0.117</td><td class="num">[−0.083, −0.017]</td></tr>
+<tr><td>FairTrade-EO</td><td class="num">0.770 ± 0.017</td><td class="num">−0.210</td><td class="num">−0.031</td><td class="num">0.095</td><td class="num"><strong>0.131</strong></td><td class="num">[−0.038, +0.002]</td></tr>
+<tr><td>Fed-FUEL-EO</td><td class="num">0.750 ± 0.015</td><td class="num">−0.167</td><td class="num">+0.001</td><td class="num">0.086</td><td class="num">0.113</td><td class="num">[−0.071, −0.007]</td></tr>
+</tbody>
+</table>
+<div class="caption"><b>Table 4.</b> All-centers test, operating points; HV as in Table 3. Every method improves the
+hypervolume over FedAvg in 10/10 seeds (p ≤ 0.002), except Fed-FUEL-EO (p = 0.063). FairTrade-DP vs Fed-FUEL-DP:
++0.009 HV (p = 0.019); vs FedFB: +0.009 (p = 0.052). FairTrade-EO keeps 1.3–1.6 more balanced-accuracy points
+than the DP methods (p &lt; 0.05).</div>
+
+<p>FairTrade gives the best trade-off in both fairness notions, and equal-opportunity FairTrade is the only
+method whose accuracy cost is not significant once test-sampling noise is included. Fed-FUEL is weakest
+here because it judges fairness on each hospital's own validation split, where Switzerland and Long Beach
+hold one woman each.</p>
+
+<h2>6&nbsp;&nbsp;Stress test: when no client sees both sexes</h2>
 <p>To test the failure mode the pooled penalty targets, I re-split the same fit patients into 10 clients.
 With probability s a patient goes to a sex-specific client (women to clients 0–1, men to 2–9), otherwise
 to a random one. Validation and test sets remain the original hospital splits. Every variant gets the
@@ -217,25 +247,25 @@ clients still hold about 10 men between them, which is enough for local penaltie
 federation. Across all eight comparisons, the pooled penalty is never significantly worse, which makes it
 a safe default.</p>
 
-<h2>6&nbsp;&nbsp;Limitations</h2>
+<h2>7&nbsp;&nbsp;Limitations</h2>
 <ul>
-<li><strong>Small groups.</strong> The test set has 15 sick women, so test EOD moves about 7 points per patient,
-and the CIs reflect training variability, not test-sampling noise. In one seed, EO selection picked α at
-the search bound (balanced accuracy 0.54–0.60).</li>
+<li><strong>Small groups.</strong> The test set has 15 sick women, so test EOD moves about 7 points per patient.
+With test patients resampled, even FedAvg's EOD interval ([−0.437, +0.023]) includes 0. Only paired
+differences are reliable, and absolute per-method EOD values should not be over-read.</li>
 <li><strong>Semi-synthetic stress test.</strong> The segregated partitions use real patients but synthetic client
 assignment. A naturally segregated federation is needed to confirm it.</li>
 <li><strong>Scope.</strong> One small tabular dataset (13 features, logistic regression), one binary sensitive
 attribute, honest-but-curious privacy assumptions for the four shared numbers, and no formal
 differential-privacy accounting.</li>
-<li><strong>Novelty.</strong> I have not yet done a systematic literature review of aggregated-statistics fairness in FL.</li>
+<li><strong>Novelty.</strong> The global penalty follows FedGFT [8]; what is new is its evaluation inside FairTrade on
+real hospitals and the identification of when FairTrade's local penalty breaks.</li>
 </ul>
 
-<h2>7&nbsp;&nbsp;Proposed next steps (thesis directions)</h2>
+<h2>8&nbsp;&nbsp;Proposed next steps (thesis directions)</h2>
 <ol>
 <li><strong>A naturally segregated federation:</strong> eICU (200+ US ICUs with sex, age and ethnicity) to test
 whether the pooled penalty matters at realistic scale and heterogeneity.</li>
-<li><strong>Robust selection under tiny groups:</strong> cross-validated or Bayesian estimates of EOD for MOBO,
-plus test-set bootstrap intervals.</li>
+<li><strong>Robust selection under tiny groups:</strong> cross-validated or Bayesian estimates of EOD for MOBO.</li>
 <li><strong>Privacy of the shared totals:</strong> secure aggregation and differentially private group counts,
 and their effect on the trade-off.</li>
 <li><strong>Imaging:</strong> Fed-ISIC2019 (skin lesions, 6 sources) to move beyond logistic regression.</li>
@@ -245,9 +275,9 @@ and their effect on the trade-off.</li>
 Python 3.11, pinned versions in <code>requirements.txt</code>, FLamby pinned at <code>edacf54</code>. One command sets
 up the environment and data (<code>scripts/setup.sh</code>). Each table above has its own script
 (<code>run_fedavg.py</code>, <code>run_baselines.py</code>, <code>run_loho.py</code>, <code>run_fairtrade.py</code>,
-<code>compare_fairtrade.py</code>, <code>run_stress.py</code>) and per-seed CSVs in <code>results/</code>; the figures are
-generated by <code>make_figures.py</code>. A full run log with every decision is in <code>results/LOG.md</code>, and
-10 unit tests run with <code>pytest</code>.</div>
+<code>compare_fairtrade.py</code>, <code>run_compare.py</code>, <code>run_stress.py</code>) and per-seed CSVs in
+<code>results/</code>; the figures are generated by <code>make_figures.py</code>. A full run log with every decision is in
+<code>results/LOG.md</code>, and 13 unit tests run with <code>pytest</code>.</div>
 
 <h2>References</h2>
 <ol class="refs">
@@ -258,6 +288,10 @@ generated by <code>make_figures.py</code>. A full run log with every decision is
 <li>A. Janosi, W. Steinbrunn, M. Pfisterer, R. Detrano. Heart Disease. UCI Machine Learning Repository, 1988. CC BY 4.0.</li>
 <li>S. Daulton, M. Balandat, E. Bakshy. Parallel Bayesian optimization of multiple noisy objectives with expected hypervolume improvement. <em>NeurIPS</em>, 2021.</li>
 <li>Y. H. Ezzeldin, S. Yan, C. He, E. Ferrara, S. Avestimehr. FairFed: Enabling group fairness in federated learning. <em>AAAI</em>, 2023.</li>
+<li>G. Wang, A. Payani, M. Lee, R. Kompella. Mitigating group bias in federated learning: Beyond local fairness. arXiv:2305.09931, 2023.</li>
+<li>Y. Rychener, D. Kuhn, Y. Hu. Global group fairness in federated learning via function tracking. <em>AISTATS</em>, 2025.</li>
+<li>Y. Zeng, H. Chen, K. Lee. Improving fairness via federated learning. arXiv:2110.15545, 2021.</li>
+<li>M. Badar, R. Younis, S. Sikdar, W. Nejdl, M. Fisichella. Fed-FUEL: Fairness and utility enhancing agnostic federated learning framework. <em>Data Mining and Knowledge Discovery</em> 39(6), 2025.</li>
 </ol>
 
 </div>
